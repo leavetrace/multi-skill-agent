@@ -54,6 +54,7 @@ class LLMResponse(BaseModel):
     latency_ms: float
     model: str
     attempts: int  # 1 + retries
+    finish_reason: str | None = None  # "stop" | "length" | "tool_calls" | provider-specific
 
 
 T = TypeVar("T", bound=BaseModel)

@@ -296,6 +296,7 @@ class OpenAICompatGateway:
             latency_ms=latency_ms,
             model=completion.model or self.model,
             attempts=attempts,
+            finish_reason=getattr(completion.choices[0], "finish_reason", None),
         )
 
 

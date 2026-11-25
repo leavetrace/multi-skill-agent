@@ -36,6 +36,7 @@ def completion(
     *,
     tool_calls: list[dict[str, Any]] | None = None,
     model: str = "test-model",
+    finish_reason: str = "stop",
 ) -> ChatCompletion:
     message: dict[str, Any] = {"role": "assistant", "content": content}
     if tool_calls:
@@ -46,7 +47,7 @@ def completion(
             "object": "chat.completion",
             "created": 0,
             "model": model,
-            "choices": [{"index": 0, "finish_reason": "stop", "message": message}],
+            "choices": [{"index": 0, "finish_reason": finish_reason, "message": message}],
             "usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18},
         }
     )
@@ -405,3 +406,9 @@ async def test_complete_structured_uses_shared_repair_loop(make_settings) -> Non
     gateway, _, _ = make_gateway(make_settings(), [completion("still not json")])
     with pytest.raises(StructuredOutputError):
         await gateway.complete_structured(USER, Ping, max_repairs=1)
+
+
+async def test_finish_reason_is_reported(make_settings) -> None:
+    gateway, _, _ = make_gateway(make_settings(), [completion("cut", finish_reason="length")])
+    response = await gateway.complete([{"role": "user", "content": "hi"}])
+    assert response.finish_reason == "length"

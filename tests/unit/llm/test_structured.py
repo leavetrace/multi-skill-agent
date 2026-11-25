@@ -115,3 +115,32 @@ async def test_repair_purpose_without_base_purpose() -> None:
     llm = FakeLLM([FakeRule("^repair", '{"ok": true}')], default="nope")
     await llm.complete_structured(MESSAGES, Ping)
     assert [c.purpose for c in llm.calls] == ["", "repair"]
+
+
+async def test_truncated_reply_repair_message_mentions_token_limit() -> None:
+    from skillagent.llm.types import LLMResponse
+
+    class CutOffFirst(FakeLLM):
+        async def complete(self, messages, **kwargs):  # type: ignore[override]
+            response = await super().complete(messages, **kwargs)
+            if len(self.calls) == 1:
+                return response.model_copy(update={"finish_reason": "length"})
+            return response
+
+    llm = CutOffFirst([FakeRule("router:repair", '{"ok": true}'), FakeRule("router", '{"ok": ')])
+    result = await llm.complete_structured(MESSAGES, Ping, purpose="router")
+    assert result.repairs == 1
+    assert "cut off at the token limit" in llm.calls[1].messages[-1]["content"]
+    assert isinstance(result.response, LLMResponse)
+
+
+def test_fake_llm_reports_finish_reason() -> None:
+    import asyncio
+
+    from skillagent.llm.types import ToolCall
+
+    call = ToolCall(id="t1", name="evaluate", arguments={}, raw_arguments="{}")
+    llm = FakeLLM([FakeRule("tool", [call]), FakeRule("text", "hi")])
+    tool = asyncio.run(llm.complete([{"role": "user", "content": "x"}], purpose="tool"))
+    text = asyncio.run(llm.complete([{"role": "user", "content": "x"}], purpose="text"))
+    assert (tool.finish_reason, text.finish_reason) == ("tool_calls", "stop")

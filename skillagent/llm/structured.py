@@ -84,6 +84,12 @@ async def complete_structured_with(
             value = schema.model_validate(data, context=validation_context)
         except (ValueError, ValidationError) as exc:  # JSONDecodeError is a ValueError
             last_error = summarize_error(exc)
+            if response.finish_reason == "length":
+                # A cut-off reply is not a schema mistake; say so, or the model repeats it.
+                last_error = (
+                    "your reply was cut off at the token limit; return a shorter JSON object "
+                    f"({last_error})"
+                )
             logger.warning(
                 "structured output invalid purpose=%s attempt=%d error=%s",
                 purpose,

@@ -115,6 +115,7 @@ class FakeLLM:
             latency_ms=0.0,
             model=self.model,
             attempts=1,
+            finish_reason="tool_calls" if tool_calls else "stop",
         )
 
     async def complete_structured(
