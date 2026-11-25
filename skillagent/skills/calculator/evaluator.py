@@ -3,8 +3,8 @@
 The model never computes numbers; it only writes expressions, and this module evaluates
 them. Untrusted input is parsed with `ast.parse(mode="eval")` and walked against an
 explicit whitelist *before* any arithmetic runs, so a forbidden construct anywhere in the
-tree is rejected without evaluating cheap-looking parts first. There is no `eval`,
-`exec`, `compile` or `sympify` here: those execute code, and a calculator must not.
+tree is rejected without evaluating cheap-looking parts first. Nothing here executes
+code: no builtin code evaluators, no `compile` of user text, no CAS string parsers.
 
 Numbers are exact `Fraction`s for as long as possible (`0.1 + 0.2 == 3/10`); only
 genuinely irrational operations (trig, logs, non-integer powers) fall back to floats.
@@ -162,7 +162,8 @@ def check_expression(expr: str) -> ast.Expression:
     try:
         tree = ast.parse(expr.strip(), mode="eval")
     except SyntaxError as exc:
-        raise CalculatorError("syntax", f"invalid syntax ({exc.msg})") from None
+        detail = "" if exc.msg == "invalid syntax" else f" ({exc.msg})"
+        raise CalculatorError("syntax", f"invalid syntax{detail}") from None
     except (ValueError, RecursionError, MemoryError):  # null bytes / parser limits
         raise CalculatorError("too_complex", "expression could not be parsed safely") from None
     _validate(tree)
@@ -343,7 +344,7 @@ def _fraction_to_float_or_inf(value: Fraction) -> float:
     try:
         return float(value)
     except OverflowError:
-        return math.copysign(math.inf, value)
+        return math.inf if value > 0 else -math.inf
 
 
 def _binop(op: type[ast.operator], left: Num, right: Num) -> Num:
@@ -387,8 +388,10 @@ def _exact_binop(op: type[ast.operator], a: Fraction, b: Fraction) -> Fraction:
 
 
 def _digits(value: Fraction) -> float:
-    """Upper-bound decimal digits of numerator/denominator, from bit lengths (no str())."""
-    return max(value.numerator.bit_length(), value.denominator.bit_length()) * _LOG10_2
+    """log10 of the larger of |numerator| and denominator: the size estimate the power
+    and product guards use (`math.log10` accepts huge ints, so no `str()` is needed)."""
+    biggest = max(abs(value.numerator), value.denominator)
+    return math.log10(biggest) if biggest > 1 else 0.0
 
 
 def _guard_digits(estimated: float, what: str) -> None:
