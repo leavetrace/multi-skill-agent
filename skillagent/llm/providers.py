@@ -62,12 +62,13 @@ def get_profile(provider: str) -> ProviderProfile:
         return PROVIDERS[provider]
     except KeyError:
         raise ConfigError(
-            f"unknown provider {provider!r}; set SKILLAGENT_LLM_PROVIDER to one of {sorted(PROVIDERS)}"
+            f"unknown provider {provider!r}; "
+            f"set SKILLAGENT_LLM_PROVIDER to one of {sorted(PROVIDERS)}"
         ) from None
 
 
 def resolve_profile(settings: Settings) -> ProviderProfile:
-    """The active profile with `SKILLAGENT_LLM_BASE_URL` / `SKILLAGENT_LLM_MODEL` overrides applied."""
+    """Active profile with the `SKILLAGENT_LLM_BASE_URL` / `_LLM_MODEL` overrides applied."""
     profile = get_profile(settings.llm_provider)
     profile = replace(
         profile,

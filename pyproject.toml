@@ -24,7 +24,7 @@ packages = ["skillagent"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = [".worktrees"]
+extend-exclude = [".worktrees", "*.md"]  # docs and prompt files are not Python
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]

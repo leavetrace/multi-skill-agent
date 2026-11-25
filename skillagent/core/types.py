@@ -105,7 +105,9 @@ class RoutingDecision(BaseModel):
         context = info.context or {}
         if self.needs_clarification:  # V1
             if not (self.clarification_question or "").strip():
-                raise ValueError("needs_clarification=true requires a non-empty clarification_question")
+                raise ValueError(
+                    "needs_clarification=true requires a non-empty clarification_question"
+                )
             self.steps = []
             return self
         if not self.steps:  # V2

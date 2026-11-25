@@ -80,5 +80,8 @@ class PromptLoader:
         return self.root / name
 
     def _names(self) -> list[str]:
-        return sorted(p.name for p in self.root.iterdir() if p.is_dir() and _PROMPT_NAME.fullmatch(p.name) and self.available(p.name)
+        return sorted(
+            p.name
+            for p in self.root.iterdir()
+            if p.is_dir() and _PROMPT_NAME.fullmatch(p.name) and self.available(p.name)
         )

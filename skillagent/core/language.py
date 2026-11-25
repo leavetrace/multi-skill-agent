@@ -174,15 +174,17 @@ def truncate_to_tokens(text: str, max_tokens: int) -> tuple[str, bool]:
 
 # --- language codes -------------------------------------------------------------------
 
-_ISO_639_1 = frozenset(
+# fmt: off
+_ISO_639_1_TABLE = (
     "aa ab ae af ak am an ar as av ay az ba be bg bi bm bn bo br bs ca ce ch co cr cs cu cv "
     "cy da de dv dz ee el en eo es et eu fa ff fi fj fo fr fy ga gd gl gn gu gv ha he hi ho "
     "hr ht hu hy hz ia id ie ig ii ik io is it iu ja jv ka kg ki kj kk kl km kn ko kr ks ku "
     "kv kw ky la lb lg li ln lo lt lu lv mg mh mi mk ml mn mr ms mt my na nb nd ne ng nl nn "
     "no nr nv ny oc oj om or os pa pi pl ps pt qu rm rn ro ru rw sa sc sd se sg si sk sl sm "
     "sn so sq sr ss st su sv sw ta te tg th ti tk tl tn to tr ts tt tw ty ug uk ur uz ve vi "
-    "vo wa wo xh yi yo za zh zu".split()
+    "vo wa wo xh yi yo za zh zu"
 )
+_ISO_639_1 = frozenset(_ISO_639_1_TABLE.split())
 
 # ISO 639-2/3 three-letter codes for the languages we expect, mapped to their 639-1 form.
 _ISO_639_3 = {
@@ -191,7 +193,7 @@ _ISO_639_3 = {
     "rus": "ru", "ita": "it", "jpn": "ja", "kor": "ko", "por": "pt", "nld": "nl",
     "dut": "nl", "hin": "hi", "urd": "ur", "heb": "he", "ell": "el", "gre": "el",
     "pol": "pl", "swe": "sv", "ukr": "uk", "aze": "az", "kur": "ku", "pus": "ps",
-}  # fmt: skip
+}
 
 _LANG_NAMES = {
     # English names
@@ -204,14 +206,15 @@ _LANG_NAMES = {
     # Endonyms commonly typed in Latin script
     "deutsch": "de", "français": "fr", "francais": "fr", "español": "es", "espanol": "es",
     "italiano": "it", "türkçe": "tr", "turkce": "tr",
-    # Persian names (after normalize_persian, spaces/ZWNJ removed)
+    # Persian names (looked up after normalize_persian, with spaces/ZWNJ removed)
     "فارسی": "fa", "پارسی": "fa", "انگلیسی": "en", "آلمانی": "de", "فرانسوی": "fr",
     "عربی": "ar", "ترکی": "tr", "ترکیاستانبولی": "tr", "اسپانیایی": "es", "اسپانیولی": "es",
     "روسی": "ru", "چینی": "zh", "ایتالیایی": "it", "ژاپنی": "ja", "کرهای": "ko",
     "پرتغالی": "pt", "هلندی": "nl", "هندی": "hi", "اردو": "ur", "عبری": "he",
     "یونانی": "el", "لهستانی": "pl", "سوئدی": "sv", "اوکراینی": "uk",
     "ترکیآذربایجانی": "az", "آذری": "az", "کردی": "ku", "پشتو": "ps",
-}  # fmt: skip
+}
+# fmt: on
 
 _REGION_SUFFIX = re.compile(r"^([a-z]{2,3})[-_][a-z0-9]{2,8}$")
 
