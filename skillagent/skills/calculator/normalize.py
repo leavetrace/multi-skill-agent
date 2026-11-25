@@ -18,7 +18,11 @@ from skillagent.skills.calculator.evaluator import (
     check_expression,
 )
 
-__all__ = ["looks_like_expression", "strip_cues", "to_expression"]
+__all__ = ["MAX_DIRECT_TEXT_CHARS", "looks_like_expression", "strip_cues", "to_expression"]
+
+# Longer text is never treated as a pure expression (prose, or an attack on the regexes);
+# the evaluator's own limit is 500 characters after normalization.
+MAX_DIRECT_TEXT_CHARS = 2_000
 
 _SYMBOLS = str.maketrans(
     {
@@ -61,24 +65,26 @@ _LEADING_CUE = re.compile(
     r")(?![^\W\d_])\s*[:：]?\s*",  # cue must not run into a letter ("calculated")
     re.IGNORECASE,
 )
+# Applied after whitespace is collapsed to single spaces, and anchored on one optional
+# space instead of `\s*` runs: adjacent unbounded quantifiers made this pattern cubic.
 _TRAILING_CUE = re.compile(
-    rf"\s*(?:را|رو)?\s*(?:"
+    rf"(?:^|\s)(?:(?:را|رو)\s)?(?:"
     rf"حساب{_SP}کن|محاسبه{_SP}کن"
     rf"|چند{_SP}(?:{_MI}شود|{_MI}شه|است|هست)|چنده"
     rf"|چقدر{_SP}(?:{_MI}شود|{_MI}شه|است|هست)|چقدره"
-    r")\s*[?؟!.]*\s*$"
+    r")$"
 )
-_TRAILING_PUNCT = re.compile(r"\s*[=?؟!]+\s*$")
+_TRAILING_PUNCT = " =?؟!"
 
 
 def strip_cues(text: str) -> str:
     """Remove polite/question framing around an expression: "what is 2+2?" → "2+2",
     «۲+۲ چند می‌شود؟» → «۲+۲». Persian cues are mostly trailing verbs, so both ends are
     checked; the loop handles combinations such as a cue followed by `=` and `?`."""
-    current = normalize_persian(text).strip()
+    current = re.sub(r"\s+", " ", normalize_persian(text)).strip()
     for _ in range(4):
-        stripped = _TRAILING_PUNCT.sub("", current)
-        stripped = _TRAILING_CUE.sub("", stripped)
+        stripped = current.rstrip(_TRAILING_PUNCT)
+        stripped = _TRAILING_CUE.sub("", stripped).rstrip(_TRAILING_PUNCT)
         stripped = _LEADING_CUE.sub("", stripped).strip()
         if stripped == current:
             break
@@ -104,6 +110,8 @@ def looks_like_expression(text: str) -> bool:
     least one operation, and parseable by the evaluator. Conservative on purpose: a
     false positive would answer a word problem with a wrong number; a false negative only
     costs one LLM call."""
+    if len(text) > MAX_DIRECT_TEXT_CHARS:
+        return False
     expr = to_expression(text)
     if not expr or not _ALLOWED_CHARS.fullmatch(expr):
         return False
@@ -139,13 +147,15 @@ def _function_call_mask(s: str) -> list[bool]:
     """For each index: is the innermost enclosing `(` a function call's parenthesis?"""
     mask = [False] * (len(s) + 1)
     stack: list[bool] = []
+    last = ""  # last non-space character, tracked so the scan stays linear
     for i, ch in enumerate(s):
         if ch == "(":
-            before = s[:i].rstrip()
-            stack.append(bool(before) and (before[-1].isalnum() or before[-1] == "_"))
+            stack.append(last.isalnum() or last == "_")
         elif ch == ")" and stack:
             stack.pop()
         mask[i] = bool(stack) and stack[-1]
+        if not ch.isspace():
+            last = ch
     return mask
 
 

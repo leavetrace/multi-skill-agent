@@ -26,7 +26,12 @@ from skillagent.skills.calculator.formatting import (
     format_result_line,
     render_number,
 )
-from skillagent.skills.calculator.normalize import looks_like_expression, strip_cues, to_expression
+from skillagent.skills.calculator.normalize import (
+    MAX_DIRECT_TEXT_CHARS,
+    looks_like_expression,
+    strip_cues,
+    to_expression,
+)
 from skillagent.skills.calculator.tool import (
     EVALUATE_TOOL,
     Calculation,
@@ -134,6 +139,8 @@ async def run(inp: SkillInput, ctx: SkillContext) -> SkillOutput:
 def _direct_expression(inp: SkillInput) -> str | None:
     """A pure expression in the text or the instruction is evaluated with zero LLM calls."""
     for candidate in (inp.text, inp.instruction):
+        if len(candidate) > MAX_DIRECT_TEXT_CHARS:
+            continue
         stripped = strip_cues(candidate)
         if stripped and looks_like_expression(stripped):
             return to_expression(stripped)
