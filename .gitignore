@@ -1,0 +1,21 @@
+# Python / tooling
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets — API keys live only in the root .env
+.env
+
+# Agent worktrees (one per work package)
+.worktrees/
+
+# Raw eval output (large, regenerable)
+eval/reports/raw/
+
+# Company-authored assignment brief stays out of the public repo (ADR-018)
+AIEngineerTask.pdf
