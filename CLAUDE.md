@@ -16,21 +16,30 @@ A CLI prototype of a multi-skill agent (take-home assignment). A LangGraph graph
 Don't edit `docs/ARCHITECTURE.md`, `docs/CONTRACTS.md`, `docs/DECISIONS.md`, `docs/TASK_BOARD.md`, `CLAUDE.md`, `agent_prompts/` or `README.md`. Those belong to the architect. Propose changes in your handoff report instead.
 
 ## 3. Git workflow (mandatory)
-- Repo root = this folder. The root checkout stays on `main`. **Never commit directly to `main`** (the only exception is the WP1 bootstrap step, which is specified explicitly).
-- Several agents may run at the same time, so **each agent works in its own git worktree**:
-  ```
-  git worktree add .worktrees/<wp-id> -b <branch> main     # e.g. .worktrees/wp2 feat/calculator
-  cd .worktrees/<wp-id>
-  ```
-  Do all your work there. `.worktrees/` is git-ignored.
-- **Conventional Commits**, small and logical: `feat(calculator): add safe AST evaluator`, `test(core): ...`, `fix(llm): ...`, `docs(handoff): ...`, `chore: ...`. One concern per commit. Aim for 5–15 commits per WP, not one giant commit.
+- Repo root = this folder. The root checkout stays on `main`. **Never commit to `main`.** Only the architect does, for docs.
+- **Conventional Commits**, small and logical: `feat(calculator): add safe AST evaluator`, `test(core): ...`, `fix(llm): ...`, `docs(handoff): ...`, `chore: ...`. One concern per commit. Aim for 5–15 commits per WP.
 - **Don't merge, rebase `main`, push, or delete branches.** The owner merges after architect review.
-- Git identity: the repo uses a **repository-local placeholder** (`skillagent-dev <skillagent-dev@example.invalid>`) until the owner supplies the real one; it will be rewritten before the first push (ADR-019). Don't change git config yourself, except for the WP1 bootstrap step specified in its prompt. Never touch `--global` config.
+- Git identity: the repo uses a **repository-local placeholder** (`skillagent-dev <skillagent-dev@example.invalid>`) until the owner supplies the real one. It will be rewritten before the first push (ADR-019). Never change `--global` config. If your environment has its own global identity, run git with `GIT_CONFIG_GLOBAL` pointing to an empty file so the placeholder applies.
+- First work out which **delivery mode** you are in (ADR-020):
+
+**Mode A — local (preferred):** you have a real shell in this folder on the owner's PC and `git status` works.
+```
+git worktree add .worktrees/<wp-id> -b <branch> main     # e.g. .worktrees/wp2 feat/calculator
+cd .worktrees/<wp-id>
+```
+Do all your work there. `.worktrees/` is git-ignored. Run tests on this machine (Windows).
+
+**Mode B — cloud workspace:** you can only copy files in and out of this folder. Your tools cannot read or write `.git`.
+1. **Input:** the owner must have created `.worktrees/main.bundle` (`git bundle create .worktrees/main.bundle main`). Copy it in and clone **from it**, so your commits share `main`'s history. If it's missing or older than `main`'s last docs change, **stop and ask the owner.** Never rebuild history from plain files, because unrelated histories can't be merged.
+2. Work on `<branch>` in your workspace, with the placeholder identity.
+3. **Output:** `git bundle create <wp-id>.bundle <branch> ^main`, then copy it to `.worktrees/<wp-id>.bundle`. Also copy your report to `.worktrees/<wp-id>_report.md`. Don't write branch files into the owner's folder; untracked copies would block the merge.
+4. Your final message gives the owner the import command: `git fetch .worktrees/<wp-id>.bundle <branch>:<branch>`.
+5. State in the report that tests ran on Linux, not Windows.
 
 ## 4. File ownership (prevents merge conflicts)
 | Area | Owner |
 |---|---|
-| `pyproject.toml`, `uv.lock`, `.gitignore`, `.env.example`, `skillagent/config.py`, `skillagent/core/**`, `skillagent/llm/**`, `skillagent/testing/**`, `skillagent/prompts/__init__.py` (loader), `skillagent/skills/base.py`, `skillagent/skills/params.py`, `skillagent/skills/catalog.py`, `skillagent/doctor.py` | WP1 |
+| `pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`, `.gitattributes`, `.env.example`, `skillagent/config.py`, `skillagent/core/**`, `skillagent/llm/**`, `skillagent/testing/**`, `skillagent/prompts/__init__.py` (loader), `skillagent/skills/base.py`, `skillagent/skills/params.py`, `skillagent/skills/catalog.py`, `skillagent/doctor.py`, `tests/conftest.py`, `tests/unit/{core,llm,skills_base}/**` | WP1 (frozen after merge; changes via architect) |
 | `skillagent/skills/calculator/**`, `skillagent/prompts/calculator/**`, `tests/unit/calculator/**` | WP2 |
 | `skillagent/skills/{summarizer,translator,general_chat}.py`, `skillagent/prompts/{summarizer,translator,general_chat}/**`, `tests/unit/skills/**` | WP3 |
 | `skillagent/router/**`, `skillagent/prompts/router/**`, `tests/unit/router/**` | WP4 |

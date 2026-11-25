@@ -1,7 +1,7 @@
 # TASK BOARD
 
 > Updated by the Chief Architect after every agent report. Agents do **not** edit this file; they report in `docs/handoffs/WPx_report.md`.
-> Last update: 2026-11-25 12:30 — architecture accepted, contracts v1.0 frozen, WP1 + WP0 prompts ready.
+> Last update: 2026-11-25 14:00 — WP1 reviewed and accepted (+3 architect follow-ups); contracts v1.1; delivery modes A/B (ADR-020).
 
 ## Status legend
 ⬜ not started · 🟦 prompt ready · 🟨 in progress · 🟪 in review (architect) · ✅ accepted/merged · ⛔ blocked
@@ -18,7 +18,7 @@
 ## Work packages
 | WP | Title | Depends on | Branch | Status |
 |---|---|---|---|---|
-| WP1 | Foundation + git bootstrap | — | `feat/foundation` | 🟦 **launch now** |
+| WP1 | Foundation + git bootstrap | — | `feat/foundation` | ✅ accepted — owner to import bundle + merge |
 | WP0 | Provider/model bake-off spike | WP1 bootstrap commit, `.env` keys | `spike/model-bakeoff` | 🟦 launch when keys exist |
 | WP2 | Calculator (safe evaluator, tool call, fast path) | WP1 merged | `feat/calculator` | ⬜ |
 | WP3 | Text skills (Summarizer, Translator, General Chat) | WP1 merged (WP0 helpful) | `feat/text-skills` | ⬜ |
@@ -31,8 +31,8 @@
 Critical path: WP1 → WP4 → WP5 → WP6b → WP7.
 
 ## Owner action items
-- [ ] Check Claude Code can run `uv` (or let WP1 install it).
-- [ ] Launch WP1 (see `agent_prompts/README.md`).
+- [ ] Import the repo from `.worktrees/wp1.bundle`, merge `feat/foundation`, and run the tests on Windows (commands in the architect's message).
+- [ ] Choose the delivery mode for the next agents: A (local Claude Code, preferred) or B (cloud + bundles).
 - [ ] Create free API keys: Google AI Studio (`GOOGLE_API_KEY`) and Groq (`GROQ_API_KEY`) → put them in root `.env` (never paste them in chat).
 - [ ] Launch WP0 after WP1's first commit on `main` exists and `.env` is in place.
 - [ ] Later (before first push): GitHub account + git name/email → architect gives history-rewrite commands (ADR-019).

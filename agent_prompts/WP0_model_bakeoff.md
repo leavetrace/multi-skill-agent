@@ -6,9 +6,9 @@ You are an **LLM evaluation engineer**. Your job is to measure (not assume) whic
 `CLAUDE.md` · `docs/ARCHITECTURE.md` §6 · `docs/DECISIONS.md` ADR-006 · `docs/CONTRACTS.md` §8 (provider table)
 
 ## 1. Preconditions — check, and stop if any fails
-- The repo exists with at least one commit on `main` (created by WP1 bootstrap). If not, stop: "WP1 bootstrap must run first."
-- A `.env` file exists at the **repo root** with at least `GOOGLE_API_KEY` and `GROQ_API_KEY`. `OPENROUTER_API_KEY` is optional. Never print the values.
-- Worktree: `git worktree add .worktrees/wp0 -b spike/model-bakeoff main` and work there.
+- The repo exists with WP1 merged into `main` (`skillagent/` package present). If not, stop: "WP1 must be merged first."
+- A `.env` file exists at the **repo root** with at least `GOOGLE_API_KEY` and `GROQ_API_KEY`. `OPENROUTER_API_KEY` is optional. Never print the values. In Mode B, copy `.env` into your workspace only, never commit it, and delete it from your workspace when you finish.
+- Branch `spike/model-bakeoff`. Follow the delivery mode rules in `CLAUDE.md` §3: worktree `.worktrees/wp0` in Mode A, bundle `.worktrees/wp0.bundle` in Mode B.
 
 ## 2. Candidates
 | ID | Provider | Model id (verify) | Params | Endpoint |

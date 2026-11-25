@@ -2,6 +2,10 @@
 
 Each `WP*.md` file is a self-contained task for a separate Claude Code session. Agents share no memory. They coordinate only through the repository: `CLAUDE.md`, `docs/`, their own branch and worktree, and the handoff report.
 
+## Delivery modes (ADR-020)
+- **Mode A (preferred):** Claude Code running **locally** in this folder (PowerShell → `claude`). The agent uses a git worktree, and tests run on Windows.
+- **Mode B:** a cloud session that can only copy files. Before launching it, run `git bundle create .worktrees/main.bundle main` in the project root. When it finishes, import its work with `git fetch .worktrees/<wp>.bundle <branch>:<branch>`.
+
 ## Launch procedure (owner)
 1. Open a terminal in the project root: `cd "C:\Users\ai\Desktop\multi-skill AI agent"`
 2. Start Claude Code: `claude`

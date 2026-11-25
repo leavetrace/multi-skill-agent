@@ -1,4 +1,4 @@
-# CONTRACTS — v1.0 (FROZEN 2026-11-25)
+# CONTRACTS — v1.1 (FROZEN 2026-11-25; v1.1 additive amendments after WP1 review)
 
 > **Normative.** These are the interfaces every work package builds against. Names, fields and semantics here are binding.
 > Implementation lives in `skillagent/` (WP1 creates it). If an agent believes a contract is wrong, it **must not change it unilaterally**: implement as specified, describe the problem in its handoff report under "Contract deviations / proposals", and the architect decides.
@@ -17,7 +17,7 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 LangHint = Literal["fa", "en", "mixed", "unknown"]      # deterministic script-based hint
 IOKind   = Literal["text", "number"]
 
-# ISO 639-1 (or 639-3) lowercase code. BeforeValidator maps common names
+# Output is ALWAYS ISO 639-1 (v1.1); 3-letter inputs (fas, per, eng…) are mapped to 639-1. BeforeValidator maps common names
 # ("English", "Persian", "Farsi", "فارسی", "انگلیسی", "fr-FR") to codes via
 # skillagent.core.language.normalize_lang_code; unmappable -> validation error.
 LangCode = Annotated[str, BeforeValidator(normalize_lang_code), Field(pattern=r"^[a-z]{2,3}$")]
@@ -47,7 +47,7 @@ class RoutingDecision(BaseModel):
     clarification_question: str | None = None        # in response_language
     dropped_intents: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
-    rationale: str = Field(default="", max_length=300)        # trace only; never sent to skills
+    rationale: str = Field(default="", max_length=300)        # trace only; never sent to skills; >300 chars is TRUNCATED (v1.1), not rejected
     route_source: Literal["llm", "rule", "fallback"] = "llm"  # set by code after validation
 ```
 
@@ -218,6 +218,7 @@ class LLMResponse(BaseModel):
     latency_ms: float
     model: str
     attempts: int                       # 1 + retries
+    finish_reason: str | None = None    # v1.1: "stop" | "length" | "tool_calls" | provider-specific
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -241,6 +242,14 @@ class LLMClient(Protocol):
 - `tool_choice`: `None` (auto) | `"required"` | a tool name (forces that tool).
 - `purpose`: free label ("router", "skill:translator", "repair") used in logs/trace and by `FakeLLM` matching.
 - Implementations: `OpenAICompatGateway` (`skillagent/llm/gateway.py`) and `FakeLLM` (`skillagent/testing/fake_llm.py`).
+- v1.1 module placement: protocol + models in `skillagent/llm/types.py`; the shared parse→validate→repair loop in `skillagent/llm/structured.py` (used by both implementations); all re-exported from `skillagent.llm`.
+- v1.1 behaviour notes (binding for callers):
+  - **One gateway per event loop.** Its semaphore/lock bind to the first loop that waits on them. Create it inside the `asyncio.run(...)` it serves and reuse it for everything in that loop (CLI REPL session, one eval run). Never share it across separate `asyncio.run()` calls.
+  - The gateway has **no overall deadline**: worst case ≈ (1 + `llm_max_retries`) × `timeout_s` + backoff. Callers that need a deadline (the WP5 skill-node wrapper) must wrap calls in `asyncio.wait_for`; cancellation is safe.
+  - A `retry-after` > 60 s raises `LLMRateLimitError` immediately (usually an exhausted daily quota).
+  - If a structured reply has `finish_reason == "length"`, the repair message says it was cut off at the token limit.
+  - Constructor: `OpenAICompatGateway(settings, profile=None, *, client=None, clock=…, sleep=…, rng=…)`; keyword-only arguments are test injection points. `ProviderProfile` has a `name`; `resolve_profile(settings)` applies model/base-URL overrides.
+- Test helpers: `skillagent.testing` exports `FakeLLM`, `FakeRule`, `RecordedCall`, `make_skill_spec()`, `echo_runner` (for synthetic-skill tests).
 
 ## 5. Errors — `skillagent/core/errors.py`
 `SkillAgentError` → `ConfigError`, `UnknownSkillError`, `DuplicateSkillError`, `LLMError` → (`LLMTimeoutError`, `LLMRateLimitError`, `LLMProviderError`), `StructuredOutputError(raw_text: str, errors: str)`.
@@ -325,3 +334,11 @@ class AgentState(TypedDict, total=False):
 
 ## Changelog
 - v1.0 (2026-11-25) — initial freeze.
+- v1.1 (2026-11-25, after WP1 review; all additive or relaxing):
+  - `LLMResponse.finish_reason`
+  - `rationale` truncated instead of rejected
+  - `LangCode` output always ISO 639-1
+  - `llm/types.py` + `llm/structured.py` module placement
+  - gateway lifetime / deadline / retry-after rules
+  - `ProviderProfile.name`
+  - test helpers

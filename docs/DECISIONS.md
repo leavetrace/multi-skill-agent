@@ -93,3 +93,26 @@ GitHub repo `multi-skill-agent`; Python package `skillagent`; CLI `python -m ski
 **Decision:** WP1 bootstrap sets a repository-local identity `skillagent-dev <skillagent-dev@example.invalid>` (worktrees share it). Nothing is pushed before the GitHub repo exists.
 **Before the first push:** rewrite author and committer on all commits to the owner's identity while **preserving merge commits and branch structure**. Use `git filter-repo --mailmap` (preferred) or `git rebase --rebase-merges --root --exec "git commit --amend --no-edit --reset-author"`. Then set the real identity in local config and remove the placeholder. This is safe because the history is unpublished. Verify with `git log --format='%an <%ae> | %cn <%ce>' | sort -u`.
 **Why not `.mailmap` only:** GitHub attribution uses the commit metadata itself, so the commits would still show the placeholder.
+
+### ADR-020 — Two agent delivery modes; local Claude Code preferred
+**Status:** Accepted (after WP1, 2026-11-25)
+**Context:** WP1 ran in a cloud workspace. It could copy files into the owner's folder but could not write `.git`, so it delivered history as a git bundle and the owner ran the import commands.
+**Decision:**
+- **Mode A** (local Claude Code in the owner's folder; worktree per WP) is preferred. Tests then run on Windows, the target platform, and no import step is needed.
+- **Mode B** (cloud) is allowed with a strict protocol: input `main.bundle`, output `<wp>.bundle` containing only `<branch> ^main`, and the report copied next to it.
+- Rebuilding history from plain files is forbidden, because unrelated histories can't be merged.
+
+### ADR-021 — WP1 review outcome
+**Status:** Accepted
+- WP1 is accepted: 246 tests reproduced by the architect, contracts satisfied, 15 clean commits.
+- Architect follow-ups on `feat/foundation` (3 commits): `LLMResponse.finish_reason`, `rationale` truncation, `.gitattributes`. These became CONTRACTS v1.1.
+- Answers to WP1's questions:
+  - (1) `llm/types.py` and `llm/structured.py` are accepted as permanent.
+  - (2) All proposals are accepted.
+  - (3) Keyless `custom` provider: no. A local model isn't free-tier evidence, so it's out of scope.
+  - (4) The 60 s `retry-after` fail-fast stays a constant. The eval runner treats `LLMRateLimitError` as "stop the run, report partial", and never sleeps through quotas.
+- Carried to later WPs:
+  - The language hint reflects content, not instruction (→ WP4 leading-segment hint).
+  - One gateway per event loop (→ WP5: the CLI REPL runs inside one `asyncio.run`).
+  - The gateway has no overall deadline (→ WP5 wrapper `wait_for`).
+  - Tools are sent even when `supports_tools=False` (→ WP2 JSON fallback).

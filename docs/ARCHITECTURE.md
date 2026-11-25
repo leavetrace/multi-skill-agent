@@ -1,6 +1,6 @@
 # ARCHITECTURE — Multi-Skill AI Agent
 
-> **Status: v1.0 — ACCEPTED by owner 2026-11-25.** Interfaces frozen in `docs/CONTRACTS.md` (normative; wins over §3 below if they ever differ).
+> **Status: v1.0 — ACCEPTED by owner 2026-11-25.** Interfaces frozen in `docs/CONTRACTS.md` v1.1 (normative; wins over §3 below if they ever differ).
 > Owner: Chief Architect (coordinator session). Single source of truth for design.
 > Any agent that finds a conflict between its task prompt and this file must stop and report it, not resolve it silently.
 
@@ -248,7 +248,7 @@ multi-skill-agent/            # GitHub repo name; Python package: skillagent
   skillagent/
     config.py  doctor.py  api.py  cli.py  __main__.py
     core/        types.py errors.py registry.py language.py
-    llm/         gateway.py providers.py ratelimit.py
+    llm/         types.py structured.py gateway.py providers.py ratelimit.py
     router/      router.py cards.py candidates.py fast_path.py         (WP4)
     skills/      base.py params.py catalog.py summarizer.py translator.py general_chat.py
                  calculator/ (evaluator.py, tool.py, skill.py)          (WP2)
