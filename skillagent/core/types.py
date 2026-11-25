@@ -49,6 +49,8 @@ LangCode = Annotated[str, BeforeValidator(normalize_lang_code), Field(pattern=r"
 
 SKILL_NAMES = ("summarizer", "translator", "calculator", "general_chat")
 
+RATIONALE_MAX_CHARS = 300
+
 
 def canonical_skill_name(name: str) -> str:
     """`"General Chat"`, `"general-chat"`, `" GENERAL_CHAT "` → `"general_chat"`.
@@ -93,6 +95,14 @@ class RoutingDecision(BaseModel):
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
     rationale: str = Field(default="", max_length=300)
     route_source: Literal["llm", "rule", "fallback"] = "llm"
+
+    @field_validator("rationale", mode="before")
+    @classmethod
+    def _truncate_rationale(cls, value: object) -> object:
+        """Trace-only field: truncate instead of rejecting, so it never costs a repair call."""
+        if isinstance(value, str) and len(value) > RATIONALE_MAX_CHARS:
+            return value[: RATIONALE_MAX_CHARS - 1] + "…"
+        return value
 
     @model_validator(mode="after")
     def _validate_plan(self, info: ValidationInfo) -> RoutingDecision:

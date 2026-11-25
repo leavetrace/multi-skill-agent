@@ -283,3 +283,17 @@ class TestCustomRegistry:
                 decision([step(1, "numbers"), step(2, "texty", "s1", params={"n": 1})]),
                 context={"registry": registry},
             )
+
+
+def test_long_rationale_is_truncated_not_rejected() -> None:
+    from skillagent.core.types import RATIONALE_MAX_CHARS
+
+    decision = RoutingDecision.model_validate(
+        {
+            "response_language": "en",
+            "steps": [{"id": "s1", "skill": "general_chat", "instruction": "chat"}],
+            "rationale": "x" * 1000,
+        }
+    )
+    assert len(decision.rationale) == RATIONALE_MAX_CHARS
+    assert decision.rationale.endswith("…")
