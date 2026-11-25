@@ -1,0 +1,10 @@
+# Normalize line endings so Windows and Linux checkouts hash prompt files identically.
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.pdf binary
+*.bundle binary
