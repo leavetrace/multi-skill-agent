@@ -24,6 +24,13 @@ Each `WP*.md` file is a self-contained task for a separate Claude Code session. 
 ## Files
 | File | Status |
 |---|---|
-| WP0_model_bakeoff.md | ready |
-| WP1_foundation.md | ready |
-| WP2–WP7 | written after the WP1/WP0 review, so they can reference real code and measured provider quirks |
+| WP1_foundation.md | done, merged |
+| WP0_model_bakeoff.md | ready (needs `.env` keys) |
+| WP2_calculator.md | ready |
+| WP3_text_skills.md | ready |
+| WP4_router.md | ready |
+| WP6a_eval_datasets.md | ready |
+| WP5, WP6b, WP7 | written by the architect after the WP2–WP4 reviews |
+| ARCHITECT_RESUME.md | prompt that starts a new coordinator session (used when moving computers) |
+
+WP0, WP2, WP3, WP4 and WP6a can run **in parallel** (separate terminals, each `claude` in the project root). Each agent creates its own worktree.

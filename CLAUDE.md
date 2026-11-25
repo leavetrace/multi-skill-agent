@@ -9,7 +9,7 @@ A CLI prototype of a multi-skill agent (take-home assignment). A LangGraph graph
 
 ## 2. Read before you write code
 1. `docs/ARCHITECTURE.md` — the design
-2. `docs/CONTRACTS.md` — **frozen interfaces (normative)**
+2. `docs/CONTRACTS.md` — **frozen interfaces (normative, v1.2)**
 3. `docs/DECISIONS.md` — why things are the way they are
 4. Your task prompt in `agent_prompts/`
 
@@ -41,10 +41,10 @@ Do all your work there. `.worktrees/` is git-ignored. Run tests on this machine 
 |---|---|
 | `pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`, `.gitattributes`, `.env.example`, `skillagent/config.py`, `skillagent/core/**`, `skillagent/llm/**`, `skillagent/testing/**`, `skillagent/prompts/__init__.py` (loader), `skillagent/skills/base.py`, `skillagent/skills/params.py`, `skillagent/skills/catalog.py`, `skillagent/doctor.py`, `tests/conftest.py`, `tests/unit/{core,llm,skills_base}/**` | WP1 (frozen after merge; changes via architect) |
 | `skillagent/skills/calculator/**`, `skillagent/prompts/calculator/**`, `tests/unit/calculator/**` | WP2 |
-| `skillagent/skills/{summarizer,translator,general_chat}.py`, `skillagent/prompts/{summarizer,translator,general_chat}/**`, `tests/unit/skills/**` | WP3 |
+| `skillagent/skills/{summarizer,translator,general_chat,payload}.py`, `skillagent/prompts/{summarizer,translator,general_chat}/**`, `tests/unit/skills/**` | WP3 |
 | `skillagent/router/**`, `skillagent/prompts/router/**`, `tests/unit/router/**` | WP4 |
 | `skillagent/graph/**`, `skillagent/api.py`, `skillagent/cli.py`, `skillagent/__main__.py`, `tests/integration/**`, `tests/scalability/**` | WP5 |
-| `eval/**` | WP6 |
+| `eval/**`, `tests/unit/eval/**` | WP6 |
 | `spikes/**` | WP0 |
 | `docs/handoffs/WPx_*.md` | the WP named in the file |
 

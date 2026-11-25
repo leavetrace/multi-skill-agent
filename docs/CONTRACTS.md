@@ -1,4 +1,4 @@
-# CONTRACTS — v1.1 (FROZEN 2026-11-25; v1.1 additive amendments after WP1 review)
+# CONTRACTS — v1.2 (FROZEN 2026-11-25; v1.1/v1.2 additive amendments)
 
 > **Normative.** These are the interfaces every work package builds against. Names, fields and semantics here are binding.
 > Implementation lives in `skillagent/` (WP1 creates it). If an agent believes a contract is wrong, it **must not change it unilaterally**: implement as specified, describe the problem in its handoff report under "Contract deviations / proposals", and the architect decides.
@@ -330,6 +330,43 @@ class AgentState(TypedDict, total=False):
     trace: Annotated[list[TraceEvent], operator.add]
 ```
 
+## 11. Router & preprocessing (v1.2, implemented by WP4; consumed by WP5)
+```python
+# skillagent/router/preprocess.py
+def build_user_request(raw_text: str) -> UserRequest       # deterministic; no LLM
+def leading_segment_hint(raw_text: str) -> LangHint        # language of the instruction part (text before
+                                                           # the first ':'/newline, else first ~12 words)
+
+# skillagent/router/candidates.py
+class CandidateSelector(Protocol):
+    def select(self, request: UserRequest, registry: SkillRegistry) -> list[str]   # skill names; always incl. general_chat
+class AllSkills: ...                                       # used when len(registry) <= router_top_k_threshold
+class BM25TopK:  def __init__(self, k: int) ...            # used above the threshold
+
+# skillagent/router/router.py  (re-exported from skillagent.router)
+class RouteResult(BaseModel):
+    decision: RoutingDecision          # always valid; route_source in {"llm","rule","fallback"}
+    events: list[TraceEvent]
+    llm_calls: int                     # 0 for fast path
+
+class Router:
+    def __init__(self, registry: SkillRegistry, settings: Settings, prompts: PromptLoader,
+                 selector: CandidateSelector | None = None) -> None
+    async def route(self, request: UserRequest, llm: LLMClient, *,
+                    elapsed_ms: Callable[[], float] = lambda: 0.0) -> RouteResult
+```
+`Router.route` **never raises** for LLM/validation failures: it returns a `fallback` decision (`general_chat`, `response_language` from `leading_segment_hint`). It raises only for programming errors.
+
+## 12. Payload extraction (v1.2, implemented by WP3; used by summarizer & translator)
+```python
+# skillagent/skills/payload.py
+class Payload(BaseModel):
+    text: str                          # the content to operate on (instruction removed when detectable)
+    method: Literal["chained", "quoted", "after_colon", "after_newline", "whole"]
+    uncertain: bool                    # True when method == "whole" (prompt must tell the model to ignore the instruction part)
+def extract_payload(inp: SkillInput) -> Payload
+```
+
 ---
 
 ## Changelog
@@ -342,3 +379,6 @@ class AgentState(TypedDict, total=False):
   - gateway lifetime / deadline / retry-after rules
   - `ProviderProfile.name`
   - test helpers
+- v1.2 (2026-11-25, before WP2–WP4):
+  - §11 router public interface (`Router`, `RouteResult`, `build_user_request`, `leading_segment_hint`, `CandidateSelector`)
+  - §12 payload extraction helper

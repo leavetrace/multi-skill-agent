@@ -1,7 +1,7 @@
 # TASK BOARD
 
 > Updated by the Chief Architect after every agent report. Agents do **not** edit this file; they report in `docs/handoffs/WPx_report.md`.
-> Last update: 2026-11-25 14:00 — WP1 reviewed and accepted (+3 architect follow-ups); contracts v1.1; delivery modes A/B (ADR-020).
+> Last update: 2026-11-25 14:35 — WP1 merged (250 tests pass on Windows); contracts v1.2; WP2/3/4/6a prompts ready; WP2 launched (Mode B); architect handoff written for the move to the owner's other computer.
 
 ## Status legend
 ⬜ not started · 🟦 prompt ready · 🟨 in progress · 🟪 in review (architect) · ✅ accepted/merged · ⛔ blocked
@@ -18,12 +18,12 @@
 ## Work packages
 | WP | Title | Depends on | Branch | Status |
 |---|---|---|---|---|
-| WP1 | Foundation + git bootstrap | — | `feat/foundation` | ✅ accepted — owner to import bundle + merge |
+| WP1 | Foundation + git bootstrap | — | `feat/foundation` | ✅ accepted & merged |
 | WP0 | Provider/model bake-off spike | WP1 bootstrap commit, `.env` keys | `spike/model-bakeoff` | 🟦 launch when keys exist |
-| WP2 | Calculator (safe evaluator, tool call, fast path) | WP1 merged | `feat/calculator` | ⬜ |
-| WP3 | Text skills (Summarizer, Translator, General Chat) | WP1 merged (WP0 helpful) | `feat/text-skills` | ⬜ |
-| WP4 | Router (+ fallback policy, Top-K selector) | WP1 merged (WP0 helpful) | `feat/router` | ⬜ |
-| WP6a | Eval datasets (test 15 + dev ~35) | contracts | `feat/eval-data` | ⬜ |
+| WP2 | Calculator (safe evaluator, tool call, fast path) | WP1 merged | `feat/calculator` | 🟨 running (Mode B, first computer) |
+| WP3 | Text skills (Summarizer, Translator, General Chat) | WP1 merged (WP0 helpful) | `feat/text-skills` | 🟦 prompt ready |
+| WP4 | Router (+ fallback policy, Top-K selector) | WP1 merged (WP0 helpful) | `feat/router` | 🟦 prompt ready |
+| WP6a | Eval datasets (test 15 + dev ~35) | contracts | `feat/eval-data` | 🟦 prompt ready |
 | WP5 | Graph, scheduler, composer, CLI, scalability tests | WP1, WP4 | `feat/graph-cli` | ⬜ |
 | WP6b | Eval runner, metrics, baseline + iteration runs | WP5, WP6a | `feat/eval-runner` | ⬜ |
 | WP7 | Prompt iteration, README, final measured results, optional Docker | all | `docs/readme` | ⬜ |
@@ -31,7 +31,7 @@
 Critical path: WP1 → WP4 → WP5 → WP6b → WP7.
 
 ## Owner action items
-- [ ] Import the repo from `.worktrees/wp1.bundle`, merge `feat/foundation`, and run the tests on Windows (commands in the architect's message).
+- [x] Imported the repo from the WP1 bundle, merged, and ran 250 tests on Windows.
 - [ ] Choose the delivery mode for the next agents: A (local Claude Code, preferred) or B (cloud + bundles).
 - [ ] Create free API keys: Google AI Studio (`GOOGLE_API_KEY`) and Groq (`GROQ_API_KEY`) → put them in root `.env` (never paste them in chat).
 - [ ] Launch WP0 after WP1's first commit on `main` exists and `.env` is in place.
