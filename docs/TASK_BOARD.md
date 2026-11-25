@@ -1,7 +1,7 @@
 # TASK BOARD
 
 > Updated by the Chief Architect after every agent report. Agents do **not** edit this file; they report in `docs/handoffs/WPx_report.md`.
-> Last update: 2026-11-25 14:35 — WP1 merged (250 tests pass on Windows); contracts v1.2; WP2/3/4/6a prompts ready; WP2 launched (Mode B); architect handoff written for the move to the owner's other computer.
+> Last update: 2026-11-25 15:10 — WP1 + WP2 merged (852 tests, Linux; Windows run pending on the new computer). Project moved to the owner's own computer.
 
 ## Status legend
 ⬜ not started · 🟦 prompt ready · 🟨 in progress · 🟪 in review (architect) · ✅ accepted/merged · ⛔ blocked
@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | WP1 | Foundation + git bootstrap | — | `feat/foundation` | ✅ accepted & merged |
 | WP0 | Provider/model bake-off spike | WP1 bootstrap commit, `.env` keys | `spike/model-bakeoff` | 🟦 launch when keys exist |
-| WP2 | Calculator (safe evaluator, tool call, fast path) | WP1 merged | `feat/calculator` | 🟨 running (Mode B, first computer) |
+| WP2 | Calculator (safe evaluator, tool call, fast path) | WP1 merged | `feat/calculator` | ✅ accepted & merged |
 | WP3 | Text skills (Summarizer, Translator, General Chat) | WP1 merged (WP0 helpful) | `feat/text-skills` | 🟦 prompt ready |
 | WP4 | Router (+ fallback policy, Top-K selector) | WP1 merged (WP0 helpful) | `feat/router` | 🟦 prompt ready |
 | WP6a | Eval datasets (test 15 + dev ~35) | contracts | `feat/eval-data` | 🟦 prompt ready |
@@ -31,10 +31,8 @@
 Critical path: WP1 → WP4 → WP5 → WP6b → WP7.
 
 ## Owner action items
-- [x] Imported the repo from the WP1 bundle, merged, and ran 250 tests on Windows.
-- [ ] Choose the delivery mode for the next agents: A (local Claude Code, preferred) or B (cloud + bundles).
-- [ ] Create free API keys: Google AI Studio (`GOOGLE_API_KEY`) and Groq (`GROQ_API_KEY`) → put them in root `.env` (never paste them in chat).
-- [ ] Launch WP0 after WP1's first commit on `main` exists and `.env` is in place.
+- [ ] On the new computer: start the architect session (`agent_prompts/ARCHITECT_RESUME.md`).
+- [ ] Create free API keys (Google AI Studio, Groq) → root `.env` (never in chat) → enables WP0.
 - [ ] Later (before first push): GitHub account + git name/email → architect gives history-rewrite commands (ADR-019).
 
 ## Risks

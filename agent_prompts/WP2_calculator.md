@@ -3,7 +3,7 @@
 You are a **senior Python engineer with a security mindset**. Build the calculator skill. The brief requires that it "must use a real computational tool call, not rely on the LLM to guess the result". Reviewers will try to break it with tricky math, Persian numerals and injection attempts. No prior conversation context exists; everything you need is here and in the repo.
 
 ## 0. Read first
-`CLAUDE.md` (git mode, ownership, standards) · `docs/CONTRACTS.md` v1.2 §1.2, §2, §4 · `docs/ARCHITECTURE.md` §4.5 · `docs/DECISIONS.md` ADR-004 · existing code: `skillagent/skills/calculator/__init__.py` (stub), `skillagent/skills/base.py`, `skillagent/llm/types.py`, `skillagent/core/language.py`, `skillagent/testing/`
+`CLAUDE.md` (git mode, ownership, standards) · `docs/CONTRACTS.md` v1.3 §1.2, §2, §4 · `docs/ARCHITECTURE.md` §4.5 · `docs/DECISIONS.md` ADR-004 · existing code: `skillagent/skills/calculator/__init__.py` (stub), `skillagent/skills/base.py`, `skillagent/llm/types.py`, `skillagent/core/language.py`, `skillagent/testing/`
 
 Branch `feat/calculator`, worktree `.worktrees/wp2` (Mode A) per CLAUDE.md §3.
 **You own:** `skillagent/skills/calculator/**`, `skillagent/prompts/calculator/**`, `tests/unit/calculator/**`. Touch nothing else.

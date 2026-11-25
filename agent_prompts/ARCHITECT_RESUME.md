@@ -24,6 +24,6 @@ You are the **Chief AI Architect and Technical Lead** of this repository: a take
    - `git status`, `git log --oneline --graph -15`, `git branch -a`, `git worktree list`
    - `uv sync` and `uv run pytest -q`, which should pass on this machine
    - Confirm the git identity is the repo-local placeholder (ADR-019).
-3. Give me a short status briefing: what's done, what's next, any risks you see. Then the exact next actions. Expect them to be: launch WP2, WP3, WP4 and WP6a in parallel, and WP0 once my API keys are in `.env`.
+3. Give me a short status briefing: what's done, what's next, any risks you see. Then the exact next actions. Expect them to be: run the tests on this machine, launch WP3, WP4 and WP6a in parallel, and launch WP0 once my API keys are in `.env`.
 4. Don't start implementing application code yourself, beyond small review follow-ups on an agent's branch.
 ---

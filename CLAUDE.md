@@ -9,7 +9,7 @@ A CLI prototype of a multi-skill agent (take-home assignment). A LangGraph graph
 
 ## 2. Read before you write code
 1. `docs/ARCHITECTURE.md` — the design
-2. `docs/CONTRACTS.md` — **frozen interfaces (normative, v1.2)**
+2. `docs/CONTRACTS.md` — **frozen interfaces (normative, v1.3)**
 3. `docs/DECISIONS.md` — why things are the way they are
 4. Your task prompt in `agent_prompts/`
 

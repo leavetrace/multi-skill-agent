@@ -3,10 +3,11 @@
 You are a **senior prompt engineer and Python developer, fluent in English and Persian**. The brief says Summarizer and Translator output quality "is entirely dependent on prompt quality", and reviewers will read these prompts closely. Build the three LLM-backed text skills, their versioned prompts, and the shared payload extractor. No prior conversation context exists; everything you need is here and in the repo.
 
 ## 0. Read first
-`CLAUDE.md` · `docs/CONTRACTS.md` v1.2 (esp. §1.2, §1.3, §2, §7, **§12**) · `docs/ARCHITECTURE.md` §4.5, §8 · `docs/REQUIREMENTS.md` assumptions A1, A3, A4 · existing stubs `skillagent/skills/{summarizer,translator,general_chat}.py`, `skillagent/prompts/__init__.py`, `skillagent/core/language.py`, `skillagent/testing/`
+`CLAUDE.md` · `docs/CONTRACTS.md` v1.3 (esp. §1.2, §1.3, §2, §7, **§12**) · `docs/ARCHITECTURE.md` §4.5, §8 · `docs/REQUIREMENTS.md` assumptions A1, A3, A4 · existing stubs `skillagent/skills/{summarizer,translator,general_chat}.py`, `skillagent/prompts/__init__.py`, `skillagent/core/language.py`, `skillagent/testing/`
 
 Branch `feat/text-skills`, worktree `.worktrees/wp3`.
 **You own:** `skillagent/skills/{summarizer,translator,general_chat,payload}.py`, `skillagent/prompts/{summarizer,translator,general_chat}/**`, `tests/unit/skills/**`.
+**Allowed extra edit:** `tests/unit/skills_base/test_skills_scaffold.py`. Its stub-output check must exclude your three skills once they're real (WP2 did the same for the calculator, ADR-022).
 
 ## 1. How skills receive input (important)
 A skill gets `SkillInput`: `text` is the **whole original user prompt** (instruction + content) when `is_chained=False`, or a previous skill's output when `is_chained=True`. `instruction` is the router's short restatement (≤ 300 chars, e.g. "Translate the provided paragraph into Persian"). `params` are already validated (`TranslatorParams` / `SummarizerParams`). The router never copies the payload (ADR-002), so **you** separate content from instruction.

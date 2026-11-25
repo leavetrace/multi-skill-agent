@@ -8,8 +8,8 @@ You are the Chief AI Architect and technical lead for this take-home assignment 
 ## 2. Read in this order
 1. `docs/REQUIREMENTS.md` — every mandatory requirement, our objectives, the assumptions log (A1–A8)
 2. `docs/ARCHITECTURE.md` — the design (v1.0 accepted)
-3. `docs/CONTRACTS.md` — frozen interfaces, **v1.2**
-4. `docs/DECISIONS.md` — ADR-001 … ADR-021
+3. `docs/CONTRACTS.md` — frozen interfaces, **v1.3**
+4. `docs/DECISIONS.md` — ADR-001 … ADR-022
 5. `docs/TASK_BOARD.md` — status
 6. `CLAUDE.md` — rules every agent follows
 7. `docs/handoffs/WP*_report.md` — agent reports so far
@@ -20,13 +20,14 @@ The assignment PDF (`AIEngineerTask.pdf`) is git-ignored (ADR-018). Ask the owne
 ## 3. State at handoff
 | WP | Status |
 |---|---|
-| WP1 Foundation | ✅ merged to `main`. 250 tests on Linux; the owner ran them on Windows during the handoff (check `git log` and ask whether `uv run pytest -q` passed on Windows). |
+| WP1 Foundation | ✅ merged; 250 tests passed on the owner's first Windows machine. |
 | WP0 model bake-off | prompt ready. Needs `GOOGLE_API_KEY` and `GROQ_API_KEY` in root `.env` (free, no card). |
-| WP2 calculator | **launched on the first computer in Mode B** (cloud session, 2026-11-25 ~14:40). If `.worktrees/wp2.bundle` and `.worktrees/wp2_report.md` exist, import with `git fetch .worktrees/wp2.bundle feat/calculator:feat/calculator`, then review per §4. If they don't exist, the run didn't finish: relaunch WP2 locally (Mode A). |
-| WP3 text skills, WP4 router, WP6a eval data | prompts ready; can run in parallel now (Mode A). |
+| WP2 calculator | ✅ merged (ADR-022). 852 tests on Linux; **run `uv run pytest -q` on Windows first**. |
+| WP3 text skills, WP6a eval data | prompts ready; run in parallel now (Mode A). |
+| WP4 router | prompt ready. It can run in parallel with WP3/WP6a, but merge it **after** WP3: its card tests render the final SPEC texts. |
 | WP5 graph+CLI, WP6b eval runner, WP7 iteration+README | **not written yet**. Outlines in §6. |
 
-**Delivery mode:** the owner now works on their own computer with **local Claude Code** (Mode A in CLAUDE.md §3: worktree per WP, tests on Windows). Mode B (cloud + git bundles) was used once for WP1 and should no longer be needed.
+**Delivery mode:** the owner now works on their own computer with **local Claude Code** (Mode A in CLAUDE.md §3: worktree per WP, tests on Windows). Mode B (cloud + git bundles) was used for WP1 and WP2 on the first computer and should no longer be needed. The project arrived as a zip of the full folder, including `.git` (branches `main`, `feat/foundation`, `feat/calculator`; repo-local placeholder identity).
 
 ## 4. How to review an agent's work (the procedure used for WP1)
 1. Read its `docs/handoffs/WPx_report.md` on its branch (`.worktrees/wpx/...`).
@@ -35,7 +36,7 @@ The assignment PDF (`AIEngineerTask.pdf`) is git-ignored (ADR-018). Ask the owne
 4. Probe behaviour with a few scripted calls, e.g. validation edge cases and Persian inputs.
 5. Decide: accept / accept with architect follow-ups / send back. Small follow-ups can be committed by you on the WP branch (Conventional Commits). Contract changes bump the CONTRACTS version, with a changelog and an ADR.
 6. Give the owner the merge command from the root checkout on `main`: `git merge --no-ff <branch> -m "Merge branch '<branch>' (WPx)"`. Then run tests again on `main`. Update TASK_BOARD and DECISIONS.
-7. Merge order when several finish together: WP2 / WP3 / WP6a in any order, **then WP4** (its card tests render the final SPEC texts). Re-run the whole suite after each merge.
+7. Merge order: WP3 / WP6a in any order, **then WP4** (its card tests render the final SPEC texts). Re-run the whole suite after each merge.
 
 ## 5. Unwritten context
 - **Owner:** Windows user (PowerShell); native Persian speaker who reviews Persian outputs (blind A/B/C sheets work well); prefers to be told exactly what to run.

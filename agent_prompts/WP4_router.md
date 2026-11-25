@@ -3,7 +3,7 @@
 You are a **senior LLM systems engineer**. The router is the most heavily evaluated component: "accuracy of skill detection" is the first grading criterion, and Persian and mixed-language routing are explicitly tested. Build the routing package. No prior conversation context exists; everything you need is here and in the repo.
 
 ## 0. Read first
-`CLAUDE.md` · `docs/CONTRACTS.md` v1.2 (§1, §1.1 rules V1–V8, §4, **§11 your public interface**) · `docs/ARCHITECTURE.md` §1, §4.1–4.3, §5 (fallback matrix), §7 (scalability) · `docs/DECISIONS.md` ADR-002, 007, 008, 010, 021 · existing code: `skillagent/core/{types,language,registry}.py`, `skillagent/llm/{types,structured}.py`, `skillagent/skills/*.py` (SPEC fields), `skillagent/testing/`
+`CLAUDE.md` · `docs/CONTRACTS.md` v1.3 (§1, §1.1 rules V1–V8, §4, **§11 your public interface**) · `docs/ARCHITECTURE.md` §1, §4.1–4.3, §5 (fallback matrix), §7 (scalability) · `docs/DECISIONS.md` ADR-002, 007, 008, 010, 021 · existing code: `skillagent/core/{types,language,registry}.py`, `skillagent/llm/{types,structured}.py`, `skillagent/skills/*.py` (SPEC fields), `skillagent/testing/`
 
 Branch `feat/router`, worktree `.worktrees/wp4`.
 **You own:** `skillagent/router/**`, `skillagent/prompts/router/**`, `tests/unit/router/**`.
@@ -54,7 +54,7 @@ Sections:
 
 ## 4. Router.route() flow
 1. `fast_path.try_route(request)`:
-   - a pure arithmetic expression (strict regex over ASCII/Persian digits, operators, parentheses, whitelisted function names; at least one operator) → `calculator` plan, `route_source="rule"`, 0 LLM calls
+   - a pure arithmetic expression → `calculator` plan, `route_source="rule"`, 0 LLM calls. **Reuse WP2's detector** (ADR-022): `from skillagent.skills.calculator.normalize import strip_cues, looks_like_expression`. Don't write a second regex.
    - empty or whitespace-only input → clarification in `en`
    - Keep the rules few, precise and tested. They are a cost optimization, not a second router.
 2. **Candidates:** `AllSkills` if `len(registry) <= settings.router_top_k_threshold`, else `BM25TopK(settings.router_top_k)`. The selection is logged in events.

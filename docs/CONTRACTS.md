@@ -1,4 +1,4 @@
-# CONTRACTS — v1.2 (FROZEN 2026-11-25; v1.1/v1.2 additive amendments)
+# CONTRACTS — v1.3 (FROZEN 2026-11-25; v1.1–v1.3 additive amendments)
 
 > **Normative.** These are the interfaces every work package builds against. Names, fields and semantics here are binding.
 > Implementation lives in `skillagent/` (WP1 creates it). If an agent believes a contract is wrong, it **must not change it unilaterally**: implement as specified, describe the problem in its handoff report under "Contract deviations / proposals", and the architect decides.
@@ -367,6 +367,10 @@ class Payload(BaseModel):
 def extract_payload(inp: SkillInput) -> Payload
 ```
 
+## 13. Calculator `SkillOutput.meta` (v1.3, implemented by WP2; read by WP5 trace and WP6 eval)
+`path`: `"direct" | "tool" | "json_fallback"` · `calculations`: list of `{expression, label, value, exact, error}`, where `value` is canonical ASCII and ungrouped (e.g. `"397.8"`, `"0.333333333333"`), `exact` is the exact form (`"1/3"`), and `error` is a code or null · `prompt_version` (null on the direct path) · `llm_calls` · `repairs` · `reason` on rejected outputs (`no_calculation` | `invalid_expressions`).
+Eval compares `calc_values` against `calculations[].value`. Traces should elide very long `exact` strings (up to ~5 000 chars).
+
 ---
 
 ## Changelog
@@ -382,3 +386,4 @@ def extract_payload(inp: SkillInput) -> Payload
 - v1.2 (2026-11-25, before WP2–WP4):
   - §11 router public interface (`Router`, `RouteResult`, `build_user_request`, `leading_segment_hint`, `CandidateSelector`)
   - §12 payload extraction helper
+- v1.3 (2026-11-25, after WP2 review): §13 calculator meta keys

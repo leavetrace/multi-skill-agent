@@ -116,3 +116,16 @@ GitHub repo `multi-skill-agent`; Python package `skillagent`; CLI `python -m ski
   - One gateway per event loop (→ WP5: the CLI REPL runs inside one `asyncio.run`).
   - The gateway has no overall deadline (→ WP5 wrapper `wait_for`).
   - Tools are sent even when `supports_tools=False` (→ WP2 JSON fallback).
+
+### ADR-022 — WP2 review outcome
+**Status:** Accepted
+- WP2 accepted and merged. The architect reproduced 852 tests after the merge (Linux), ruff is clean, and the `eval`/`exec`/`sympify` grep is empty.
+- Spot checks: exact `0.1+0.2 = 3/10`; `9**9**9`, `__import__`, `().__class__` rejected in < 0.1 ms; Persian «۲۵ درصد از ۸۴۰» → `۲۱۰` with 0 LLM calls.
+- **Windows run pending:** the first `uv run pytest -q` on the owner's machine must pass.
+- Answers to WP2's questions:
+  1. **Yes.** WP4's fast path reuses `skillagent.skills.calculator.normalize.strip_cues` + `looks_like_expression`, so there is one definition of "pure expression" instead of two diverging regexes. The WP4 prompt is updated.
+  2. The `<task>` + `<request>`/`<previous_result>` message shape is accepted.
+  3. The Persian `٬` thousands separator is accepted. The owner may veto it during the Persian review.
+  4. **Yes:** CONTRACTS v1.3 §13 records the calculator meta keys.
+- Its edit outside ownership (`tests/unit/skills_base/test_skills_scaffold.py`, excluding the calculator from the stub-output check) is accepted. WP3 must make the same one-line change for its three skills; the WP3 prompt is updated.
+- Untested so far: live tool-calling quality, which WP0/WP6 will measure.
