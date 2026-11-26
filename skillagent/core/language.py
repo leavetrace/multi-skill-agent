@@ -248,22 +248,31 @@ def normalize_lang_code(value: object) -> str:
 
 # --- model-output cleanup -------------------------------------------------------------
 
-_THINK_BLOCK = re.compile(r"<think\b[^>]*>.*?</think\s*>", re.IGNORECASE | re.DOTALL)
-_THINK_OPEN_UNTERMINATED = re.compile(r"^\s*<think\b[^>]*>.*\Z", re.IGNORECASE | re.DOTALL)
-_THINK_ORPHAN_CLOSE = re.compile(r"^.*</think\s*>", re.IGNORECASE | re.DOTALL)
+# Qwen-style `<think>` and Gemma-4-style `<thought>` (WP0: Gemma on Google always thinks inline).
+_THINK_TAG = r"(?:think|thought)"
+_THINK_BLOCK = re.compile(rf"<{_THINK_TAG}\b[^>]*>.*?</{_THINK_TAG}\s*>", re.IGNORECASE | re.DOTALL)
+_THINK_OPEN_UNTERMINATED = re.compile(rf"^\s*<{_THINK_TAG}\b[^>]*>.*\Z", re.IGNORECASE | re.DOTALL)
+_THINK_ORPHAN_CLOSE = re.compile(rf"^.*</{_THINK_TAG}\s*>", re.IGNORECASE | re.DOTALL)
+_THINK_CLOSE_PRESENT = re.compile(rf"</{_THINK_TAG}\s*>", re.IGNORECASE)
+# After its thought block Gemma wraps the answer in our own `<message>` input tag.
+_LONE_MESSAGE_WRAPPER = re.compile(r"\A\s*<message>\s*(.*?)\s*</message>\s*\Z", re.DOTALL)
 
 
 def strip_think(text: str) -> str:
     """Remove reasoning blocks some models emit even when thinking is "disabled".
 
-    Handles complete `<think>…</think>` blocks, an unterminated leading `<think>…` (the
-    model ran out of tokens while thinking → nothing usable), and an orphan `</think>`
-    whose opening tag was injected by the chat template rather than generated.
+    Handles complete `<think>…</think>` / `<thought>…</thought>` blocks, an unterminated
+    leading block (the model ran out of tokens while thinking → nothing usable), an orphan
+    closing tag whose opening tag was injected by the chat template, and an answer that is
+    wrapped whole in a `<message>` tag (Gemma echoes the tag it was given the input in).
     """
     text = _THINK_BLOCK.sub("", text)
     text = _THINK_OPEN_UNTERMINATED.sub("", text)
-    if "</think" in text.lower():
+    if _THINK_CLOSE_PRESENT.search(text):
         text = _THINK_ORPHAN_CLOSE.sub("", text, count=1)
+    wrapped = _LONE_MESSAGE_WRAPPER.match(text)
+    if wrapped:
+        text = wrapped.group(1)
     return text.strip()
 
 

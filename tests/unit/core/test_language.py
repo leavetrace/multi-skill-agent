@@ -221,6 +221,18 @@ class TestStripThink:
     def test_no_think_unchanged_but_stripped(self) -> None:
         assert strip_think("  plain answer \n") == "plain answer"
 
+    def test_gemma_thought_blocks(self) -> None:
+        # Observed in WP0/WP3 on gemma-4-31b-it via the Gemini OpenAI endpoint.
+        assert strip_think("<thought>plan the reply</thought>Paris") == "Paris"
+        assert strip_think('<thought>x</thought>{"city": "Paris"}') == '{"city": "Paris"}'
+        assert strip_think("<thought>ran out of tokens") == ""
+        reply = "<thought>be warm</thought>\n<message>سلام! خوبم، ممنون.</message>"
+        assert strip_think(reply) == "سلام! خوبم، ممنون."
+
+    def test_message_tag_kept_when_not_a_lone_wrapper(self) -> None:
+        text = "Use <message> tags like <message>this</message> in your template."
+        assert strip_think(text) == text
+
 
 class TestExtractJsonObject:
     def test_plain(self) -> None:
