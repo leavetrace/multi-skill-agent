@@ -32,8 +32,9 @@ Each `WP*.md` file is a self-contained task for a separate Claude Code session. 
 | WP6a_eval_datasets.md | done, merged |
 | WP4b_router_compact.md | done |
 | WP5_graph_cli.md | done |
-| WP6b_eval_runner.md | ready (after WP4b, WP5 and `fix/review-followups` are merged) |
-| WP7 | written by the architect after the WP6b review |
+| WP6b_eval_runner.md | done |
+| WP7a_prompt_iteration.md | ready after the dev v1 baseline (D01–D40) is complete |
+| WP7b (test-set run, README, release) | written by the architect after WP7a |
 | ARCHITECT_RESUME.md | prompt that starts a new coordinator session (used when moving computers) |
 
 WP0, WP2, WP3, WP4 and WP6a can run **in parallel** (separate terminals, each `claude` in the project root). Each agent creates its own worktree.
