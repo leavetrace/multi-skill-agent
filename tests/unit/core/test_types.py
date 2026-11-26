@@ -212,7 +212,15 @@ class TestV8MaxSkills:
             decision(steps, dropped_intents=["earlier"]), context=ctx
         )
         assert [s.id for s in d.steps] == ["s1", "s2"]
-        assert d.dropped_intents == ["earlier", "do general_chat"]
+        # v1.4: model-written dropped_intents are replaced; only code-dropped steps count.
+        assert d.dropped_intents == ["do general_chat"]
+
+    def test_model_written_dropped_intents_reset_within_limit(self, ctx: dict[str, Any]) -> None:
+        steps = [step(1, "translator")]
+        d = RoutingDecision.model_validate(
+            decision(steps, dropped_intents=["invented by the model"]), context=ctx
+        )
+        assert d.dropped_intents == []
 
     def test_dropped_steps_are_not_validated(self, ctx: dict[str, Any]) -> None:
         steps = [step(1, "translator"), step(2, "calculator"), step(3, "no_such_skill", "s9")]

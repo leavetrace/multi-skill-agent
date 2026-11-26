@@ -124,8 +124,8 @@ class RoutingDecision(BaseModel):
             raise ValueError("steps must contain at least one step when needs_clarification=false")
 
         max_skills = context.get("max_skills")
-        if max_skills is not None and len(self.steps) > max_skills:  # V8
-            self.dropped_intents.extend(step.instruction for step in self.steps[max_skills:])
+        if max_skills is not None:  # V8 (v1.4: code owns dropped_intents; model text is reset)
+            self.dropped_intents = [step.instruction for step in self.steps[max_skills:]]
             self.steps = self.steps[:max_skills]
 
         errors = _structural_errors(self.steps)  # V3, V4
