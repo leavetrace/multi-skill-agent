@@ -1,7 +1,7 @@
 # TASK BOARD
 
 > Updated by the Chief Architect after every agent report. Agents do **not** edit this file; they report in `docs/handoffs/WPx_report.md`.
-> Last update: 2026-11-26 07:25 — architect resumed on the owner's computer. `main` verified on Windows: 852 tests passed, ruff check and format clean (uv 0.13.10). Next: WP3, WP4, WP6a in parallel; WP0 when `.env` keys exist.
+> Last update: 2026-11-26 08:05 — WP6a merged (879 tests on `main`, Windows). WP4 accepted; its merge waits for WP3. WP0 and WP3 running.
 
 ## Status legend
 ⬜ not started · 🟦 prompt ready · 🟨 in progress · 🟪 in review (architect) · ✅ accepted/merged · ⛔ blocked
@@ -19,21 +19,27 @@
 | WP | Title | Depends on | Branch | Status |
 |---|---|---|---|---|
 | WP1 | Foundation + git bootstrap | — | `feat/foundation` | ✅ accepted & merged |
-| WP0 | Provider/model bake-off spike | WP1 bootstrap commit, `.env` keys | `spike/model-bakeoff` | 🟦 launch when keys exist |
+| WP0 | Provider/model bake-off spike | WP1 bootstrap commit, `.env` keys | `spike/model-bakeoff` | 🟨 running (keys verified 2026-11-26) |
 | WP2 | Calculator (safe evaluator, tool call, fast path) | WP1 merged | `feat/calculator` | ✅ accepted & merged |
-| WP3 | Text skills (Summarizer, Translator, General Chat) | WP1 merged (WP0 helpful) | `feat/text-skills` | 🟦 prompt ready |
-| WP4 | Router (+ fallback policy, Top-K selector) | WP1 merged (WP0 helpful) | `feat/router` | 🟦 prompt ready |
-| WP6a | Eval datasets (test 15 + dev ~35) | contracts | `feat/eval-data` | 🟦 prompt ready |
+| WP3 | Text skills (Summarizer, Translator, General Chat) | WP1 merged (WP0 helpful) | `feat/text-skills` | 🟨 running |
+| WP4 | Router (+ fallback policy, Top-K selector) | WP1 merged (WP0 helpful) | `feat/router` | 🟪 accepted (ADR-024); merge after WP3; live smoke after WP0 |
+| WP6a | Eval datasets (test 15 + dev 40) | contracts | `feat/eval-data` | ✅ accepted & merged (ADR-023) |
 | WP5 | Graph, scheduler, composer, CLI, scalability tests | WP1, WP4 | `feat/graph-cli` | ⬜ |
 | WP6b | Eval runner, metrics, baseline + iteration runs | WP5, WP6a | `feat/eval-runner` | ⬜ |
 | WP7 | Prompt iteration, README, final measured results, optional Docker | all | `docs/readme` | ⬜ |
 
 Critical path: WP1 → WP4 → WP5 → WP6b → WP7.
 
+## Architect follow-ups
+- [ ] V8: reset model-written `dropped_intents` before applying the limit (`core/types.py`, ADR-024).
+- [ ] WP4 live smoke on the WP0 probes (≤ 20 calls) after WP0; record provider `prompt_tokens`.
+- [ ] Update `ProviderProfile` flags and `extra_body` from the WP0 report.
+
 ## Owner action items
 - [x] On the new computer: start the architect session (`agent_prompts/ARCHITECT_RESUME.md`); install uv.
-- [ ] Launch WP3, WP4, WP6a (three PowerShell windows, Mode A).
-- [ ] Create free API keys (Google AI Studio, Groq) → root `.env` (never in chat) → enables WP0.
+- [x] Launch WP3, WP4, WP6a (three PowerShell windows, Mode A).
+- [x] API keys in `.env` (rotated after an accidental paste in chat; verified 2026-11-26).
+- [ ] Native review of the Persian test-set prompts T04, T06, T08, T11, T12, T15 (T02 and the qanat text: OK).
 - [ ] Later (before first push): GitHub account + git name/email → architect gives history-rewrite commands (ADR-019).
 
 ## Risks
