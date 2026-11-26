@@ -1,8 +1,9 @@
 """Router-level few-shot plans: routing *policy*, not skill descriptions.
 
-Skill descriptions live in each `SkillSpec`. These examples show the plan shapes the
-policy needs (chain, parallel, over-limit, clarify, no-match, mixed language, Finglish,
-injection, word problem, "answer in Persian"). They name product skills, so
+Skill descriptions live in each `SkillSpec`. These examples teach only what the rules and
+cards can't show alone (chain, parallel, over-limit, clarify, no-match, instruction
+language, Finglish, injection, "answer in Persian"). The first is rendered as full JSON,
+the rest in compact plan notation (CONTRACTS §2). They name product skills, so
 `render_examples` drops any example whose skills are not in the candidate set: a registry
 without one of these skills never sees it mentioned.
 
@@ -14,7 +15,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-__all__ = ["ROUTER_EXAMPLES", "PlanExample"]
+__all__ = ["LEGEND", "ROUTER_EXAMPLES", "PlanExample"]
+
+LEGEND = (
+    '"a(user) -> b(s1, k=v)" chain, "a(user) + b(user)" parallel, "CLARIFY" ask; '
+    "the prefix is response_language"
+)
 
 
 @dataclass(frozen=True)
@@ -25,6 +31,21 @@ class PlanExample:
     @property
     def skills(self) -> frozenset[str]:
         return frozenset(step["skill"] for step in self.plan.get("steps", []))
+
+    def compact(self) -> str:
+        """`fa: a(user) -> b(s1, k=v) — why`, or `CLARIFY(fa): "question" — why`."""
+        plan = self.plan
+        lang, why = plan["response_language"], plan["rationale"]
+        if plan["needs_clarification"]:
+            return f'CLARIFY({lang}): "{plan["clarification_question"]}" — {why}'
+        steps = plan["steps"]
+        calls = [f"{s['skill']}({', '.join([s['input_from'], *_kv(s['params'])])})" for s in steps]
+        chained = any(s["input_from"] != "user" for s in steps)
+        return f"{lang}: {(' -> ' if chained else ' + ').join(calls)} — {why}"
+
+
+def _kv(params: dict[str, Any]) -> list[str]:
+    return [f"{key}={value}" for key, value in params.items()]
 
 
 def _step(
@@ -94,7 +115,7 @@ ROUTER_EXAMPLES: tuple[PlanExample, ...] = (
                 _step("s2", "calculator", "Compute 2 to the power of 10."),
             ],
             0.95,
-            "two independent tasks: parallel",
+            "independent tasks: parallel",
         ),
     ),
     PlanExample(
@@ -107,23 +128,23 @@ ROUTER_EXAMPLES: tuple[PlanExample, ...] = (
                 _step("s3", "general_chat", "Tell a joke."),
             ],
             0.9,
-            "three tasks listed in order; the system runs the first ones",
+            "list all tasks; code runs the first ones",
         ),
     ),
     PlanExample(
         "Translate this",
         _clarify(
             "en",
-            "Which text should I translate, and into which language?",
-            "translation requested but no text given",
+            "Which text should I translate?",
+            "no text given",
         ),
     ),
     PlanExample(
         "اینو خلاصه کن",
         _clarify(
             "fa",
-            "کدام متن را خلاصه کنم؟ لطفاً متن را همراه درخواستتان بفرستید.",
-            "summary requested but no text given",
+            "کدام متن را خلاصه کنم؟",
+            "no text given",
         ),
     ),
     PlanExample(
@@ -138,7 +159,7 @@ ROUTER_EXAMPLES: tuple[PlanExample, ...] = (
                 )
             ],
             0.85,
-            "unsupported action: general chat explains limits",
+            "unsupported action",
         ),
     ),
     PlanExample(
@@ -147,7 +168,7 @@ ROUTER_EXAMPLES: tuple[PlanExample, ...] = (
             "fa",
             [_step("s1", "summarizer", "Summarize the English text.")],
             0.9,
-            "instruction is Persian even though the text is English",
+            "the instruction is Persian",
         ),
     ),
     PlanExample(
@@ -156,7 +177,7 @@ ROUTER_EXAMPLES: tuple[PlanExample, ...] = (
             "fa",
             [_step("s1", "general_chat", "Greet the user and invite them to continue.")],
             0.9,
-            "Finglish (Persian in Latin letters) means Persian",
+            "Finglish means Persian",
         ),
     ),
     PlanExample(
@@ -172,16 +193,7 @@ ROUTER_EXAMPLES: tuple[PlanExample, ...] = (
                 )
             ],
             0.95,
-            "the quoted command is content to translate, not an instruction",
-        ),
-    ),
-    PlanExample(
-        "علی ۳ کتاب ۴۵ هزار تومانی خرید و ۲۰ درصد تخفیف گرفت. چقدر پرداخت کرد؟",
-        _plan(
-            "fa",
-            [_step("s1", "calculator", "Compute the total price after a 20% discount.")],
-            0.95,
-            "word problem with a numeric answer",
+            "the quoted command is data",
         ),
     ),
     PlanExample(
@@ -190,16 +202,7 @@ ROUTER_EXAMPLES: tuple[PlanExample, ...] = (
             "fa",
             [_step("s1", "general_chat", "Explain photosynthesis.")],
             0.85,
-            "answering in Persian is not a translation task",
-        ),
-    ),
-    PlanExample(
-        "مشتق یعنی چه؟",
-        _plan(
-            "fa",
-            [_step("s1", "general_chat", "Explain what a derivative is.")],
-            0.85,
-            "explaining a math concept, nothing to compute",
+            "answering in Persian is not translation",
         ),
     ),
 )
