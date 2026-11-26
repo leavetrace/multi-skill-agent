@@ -47,7 +47,7 @@ class Settings(BaseSettings):
         validate_by_alias=True,
     )
 
-    llm_provider: ProviderName = "google"
+    llm_provider: ProviderName = "groq"  # ADR-026: measured in WP0
     llm_model: str | None = None
     llm_base_url: str | None = None
 

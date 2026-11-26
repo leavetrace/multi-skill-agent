@@ -1,7 +1,10 @@
 """Provider profiles: per-endpoint quirks live in data, not in `if provider == ...` branches.
 
-Capability flags are provisional (all True) until the WP0 bake-off measures them; the
-gateway already has fallbacks for each flag (system-role merging, JSON-mode retry).
+Groq values were measured in the WP0 bake-off (ADR-026): system role, JSON mode and forced
+tool calls all work, and `reasoning_effort: "none"` pins instruct mode. Google's Gemma 4
+accepts the same features but always thinks inline (`<thought>…</thought>`), which
+`strip_think` removes; no request field turns it off. The gateway keeps its fallbacks for
+each flag (system-role merging, JSON-mode retry).
 """
 
 from __future__ import annotations
@@ -41,6 +44,7 @@ PROVIDERS: dict[str, ProviderProfile] = {
         base_url="https://api.groq.com/openai/v1",
         default_model="qwen/qwen3.8-27b",
         api_key_field="groq_api_key",
+        extra_body={"reasoning_effort": "none"},
     ),
     "openrouter": ProviderProfile(
         name="openrouter",

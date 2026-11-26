@@ -23,7 +23,7 @@ def test_missing_key_exits_2_without_network() -> None:
     assert doctor.run_doctor(console=console) == doctor.EXIT_CONFIG
     text = out.getvalue()
     assert "api key  : missing" in text
-    assert "GOOGLE_API_KEY" in text and ".env" in text
+    assert "GROQ_API_KEY" in text and ".env" in text
 
 
 def test_cli_entrypoint_exit_code() -> None:
@@ -40,7 +40,7 @@ def test_invalid_config_exits_2(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_offline_ok_masks_key() -> None:
     console, out = capture()
-    settings = Settings(google_api_key="AIzaSyREALLOOKING1234wxyz")
+    settings = Settings(llm_provider="google", google_api_key="AIzaSyREALLOOKING1234wxyz")
     assert doctor.run_doctor(settings=settings, console=console) == doctor.EXIT_OK
     text = out.getvalue()
     assert "AIza…wxyz" in text and "AIzaSyREALLOOKING1234wxyz" not in text
@@ -58,7 +58,7 @@ class _FakeGateway(FakeLLM):
 def test_live_checks_success(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(doctor, "OpenAICompatGateway", _FakeGateway)
     console, out = capture()
-    settings = Settings(google_api_key="AIzaSyREALLOOKING1234wxyz")
+    settings = Settings(llm_provider="google", google_api_key="AIzaSyREALLOOKING1234wxyz")
     assert doctor.run_doctor(live=True, settings=settings, console=console) == doctor.EXIT_OK
     text = out.getvalue()
     assert "plain      : ok" in text and "structured : ok" in text
@@ -71,6 +71,6 @@ def test_live_provider_error_exits_3(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(doctor, "OpenAICompatGateway", Failing)
     console, out = capture()
-    settings = Settings(google_api_key="AIzaSyREALLOOKING1234wxyz")
+    settings = Settings(llm_provider="google", google_api_key="AIzaSyREALLOOKING1234wxyz")
     assert doctor.run_doctor(live=True, settings=settings, console=console) == doctor.EXIT_PROVIDER
     assert "LLMRateLimitError" in out.getvalue()
