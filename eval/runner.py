@@ -22,12 +22,14 @@ import argparse
 import asyncio
 import hashlib
 import json
+import logging
 import re
 import subprocess
 import sys
 import time
 from collections import Counter
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -247,11 +249,37 @@ def quota_exhaustion(run: AgentRun) -> str | None:
 
 
 _ACCOUNT_ID = re.compile(r"\borg_[A-Za-z0-9]+")
+REDACTED_ID = "org_<redacted>"  # same marker as the WP0 bake-off logs
 
 
 def redact_ids(text: str) -> str:
-    """Provider messages name the account (`org_…`); reports are committed, so drop it."""
-    return _ACCOUNT_ID.sub("org_…", text)
+    """Provider error bodies echo the account id (`org_…`); reports, raw logs and console
+    output must not carry it, so every path out of the runner goes through here."""
+    return _ACCOUNT_ID.sub(REDACTED_ID, text)
+
+
+@contextmanager
+def redacted_logging() -> Iterator[None]:
+    """Redact account ids from every log record created while the runner is active.
+
+    The router and gateway log provider messages verbatim (`router fallback: …`); a record
+    factory catches all loggers and handlers without touching code the eval does not own.
+    """
+    previous = logging.getLogRecordFactory()
+
+    def factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
+        record = previous(*args, **kwargs)
+        message = record.getMessage()
+        cleaned = redact_ids(message)
+        if cleaned != message:
+            record.msg, record.args = cleaned, None
+        return record
+
+    logging.setLogRecordFactory(factory)
+    try:
+        yield
+    finally:
+        logging.setLogRecordFactory(previous)
 
 
 # --- options -----------------------------------------------------------------------------
@@ -515,7 +543,7 @@ def _jsonl_line(
         "score": score.model_dump(mode="json") if score else None,
         "agent_run": run.model_dump(mode="json"),
     }
-    return json.dumps(record, ensure_ascii=False)
+    return redact_ids(json.dumps(record, ensure_ascii=False))
 
 
 def _progress(
@@ -769,7 +797,18 @@ def main(
     now: Callable[[], datetime] = lambda: datetime.now().astimezone(),
     out: TextIO | None = None,
 ) -> int:
-    out = out or sys.stdout
+    with redacted_logging():
+        return _main(argv, llm_factory=llm_factory, sleep=sleep, now=now, out=out or sys.stdout)
+
+
+def _main(
+    argv: Sequence[str] | None,
+    *,
+    llm_factory: LLMFactory | None,
+    sleep: Sleep,
+    now: Callable[[], datetime],
+    out: TextIO,
+) -> int:
     opts = parse_args(argv)
     if opts.set_name == "test" and not opts.allow_test_set:
         print(

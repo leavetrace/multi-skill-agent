@@ -307,7 +307,8 @@ def test_resume_reuses_scored_cases_and_reruns_aborted_ones(tmp_path: Path) -> N
     assert code == 3
     raw = next((first_dir / "raw").glob("*.jsonl"))
     report = next(first_dir.glob("*.md")).read_text(encoding="utf-8")
-    assert "org_abc123XYZ" not in report and "org_…" in report  # account id redacted
+    assert "org_abc123XYZ" not in report and "org_<redacted>" in report  # account id
+    assert "org_abc123XYZ" not in raw.read_text(encoding="utf-8")  # raw log redacted too
     assert f"--resume {raw.as_posix()}" in report
 
     second_dir = tmp_path / "second"
@@ -358,3 +359,19 @@ async def test_metered_llm_trips_after_a_rate_limit() -> None:
     assert len(inner.calls) == 1  # the second call never reached the provider
     assert metered.calls == 1
     assert metered.tripped is not None and "org_secret1" not in metered.tripped
+
+
+def test_log_records_are_redacted_while_the_runner_is_active(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import logging
+
+    from eval.runner import redacted_logging
+
+    logger = logging.getLogger("skillagent.router")
+    with caplog.at_level(logging.WARNING), redacted_logging():
+        logger.warning("router fallback: %s", "429 in organization `org_01abcDEF` on TPD")
+    logger.warning("outside: org_keepme")  # the factory is restored afterwards
+    messages = [r.getMessage() for r in caplog.records]
+    assert messages[0] == "router fallback: 429 in organization `org_<redacted>` on TPD"
+    assert "org_keepme" in messages[-1]

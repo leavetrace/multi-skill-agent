@@ -144,7 +144,8 @@ Behaviour:
   The report prints the `--resume` command to finish the run once the quota is back.
   Groq's free tier also caps **200 000 tokens per day** (measured from a 429, 2026-11-26);
   one dev case costs ~3.5K tokens, so a full 40-case dev run (~140K) may need two sessions.
-- Provider account ids (`org_…`) are redacted from reports.
+- Provider account ids are replaced by `org_<redacted>` (as in WP0) in reports, raw JSONL
+  logs and log output.
 - Scoring rules are in the `eval/metrics.py` docstring. The headline "skill-detection
   accuracy" is **routing-correct**: ordered skill set + structure (multi-step cases) +
   response language, or a full `also_ok` match. Params, dropped intents, calculator values,
