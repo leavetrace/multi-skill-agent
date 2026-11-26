@@ -178,7 +178,7 @@ def ask(
         if trace:
             _print_trace(run)
     if out is not None:
-        out.write_text(run.response + "\n", encoding="utf-8")
+        out.write_text(run.response + "\n", encoding="utf-8", newline="\n")
         _err().print(f"response written to {out}", markup=False)
 
 
