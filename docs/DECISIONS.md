@@ -161,3 +161,22 @@ GitHub repo `multi-skill-agent`; Python package `skillagent`; CLI `python -m ski
 - Measured 2026-11-26: Groq `qwen/qwen3.8-27b` (27B dense) passed every capability probe, routing 20/20 with the draft prompt, calculator extraction 5/5, clean Persian automated checks, p50 ≈ 0.9 s. Google `gemma-4-31b-it`: 18 of 26 chat calls returned 503 "high demand" in a 35-minute window; successful calls took 8–70 s and leaked `<thought>` reasoning into content, with no working thinking-off switch. Routing/Persian for Gemma were never measured.
 - **Recommendation:** amend ADR-006 so Groq / Qwen3.8-27B is primary (`llm_provider` default `groq`, `extra_body={"reasoning_effort": "none"}`, system role, JSON mode and tools supported). Gemma 4 31B on Google stays configured as the documented alternate, with `<thought>` stripping in the gateway.
 - Consequences: Groq's free tier limits are 8K tokens/min and 1K output tokens/min, so the router prompt must be trimmed (target ≤ 2.5K provider tokens) and the gateway must honour `retry-after` (it does). Qwen3.8-27B is a Groq **preview** model, so deprecation risk is real and the alternate stays wired.
+
+### ADR-027 — WP4b review outcome (compact router prompt)
+**Status:** Accepted
+- Reproduced in `.worktrees/wp4b`: 1 143 tests, ruff clean; 9 commits; only router files, its live script and its handoff files.
+- Measured by WP4b on Groq: router system prompt **4 732 → ~2 293 provider tokens**; dev D01–D20 plan 20/20 (v1 baseline 19/20), language 20/20; D01–D40 plan 40/40; p50 router latency 36.5 s → 0.92 s with no 429. 41 live calls.
+- Compact v1 **replaces v1 in place**: no scored eval had used the old v1, so the compact prompt is the eval baseline (template sha `535b63458c5a`).
+- **G2 exception accepted:** an explicit "answer/reply in X" keeps the model's reply language. Recorded here; guards are internal to the router, not a contract.
+- Answers: (1) cue order now matters (first 3 Use + 2 Don't-use cues render); SPEC owners reorder cues in WP7 when eval points at a card. (2) This ADR records G2.
+- Caveat: dev accuracy was measured once (temperature 0), on the set the prompt was tuned against; only the test set run in WP7 is reportable.
+
+### ADR-028 — WP5 review outcome (graph, API, CLI) and architect follow-ups
+**Status:** Accepted
+- Reproduced in `.worktrees/wp5`: 1 188 tests, ruff clean; 11 commits; owned files plus `pyproject.toml` `[project.scripts]` (allowed) and `tests/unit/graph/` (new, assigned to WP5).
+- Trial merge of WP4b + WP5 + `fix/review-followups` on `main`: **1 206 tests** pass, ruff clean, no conflicts.
+- Accepted deviations: run-scoped values (`RunContext`: prompt, start, deadline) travel in `config["configurable"]`, keeping `AgentState` exactly as CONTRACTS §10; node names `skill_<name>` (LangGraph reserves `:`), trace keeps `skill:<name>`; `SkillInput` resolved in `dispatch`; `clarify → END`.
+- **Architect live check (Groq, merged code, ~14 calls):** chain (summarize → Persian), clarify ("Summarize this") and Persian small talk were correct. **Bug found:** a Persian parallel request «این جمله را به آلمانی ترجمه کن «صبح بخیر دوستان» و ۱۵ درصد از ۳۶۰ را هم حساب کن» translated the whole prompt, because the rest of the message exceeded the payload instruction-word cap and the router didn't quote the span. Fixed on `fix/review-followups` (payload: router-quoted span anchor + "quoted span whose own clause is the request"; tests include a quotation inside a long text to summarize). Re-checked live: «Guten Morgen, Freunde».
+- Also on `fix/review-followups`: calculator direct path drops a sentence-final period (`(15/100)*240. = 36` → `(15/100)*240 = 36`), as WP5 reported.
+- Answers: (1) Retry warnings: the CLI will keep `skillagent.llm` at ERROR unless `--trace` (small architect follow-up after merge). (2) Yes, the README embeds the Mermaid output. (3) Fixed (above).
+- WP5's scalability token table used the old v1 router prompt; WP7 regenerates it after WP4b is merged.
