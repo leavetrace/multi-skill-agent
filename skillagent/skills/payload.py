@@ -101,16 +101,37 @@ def _is_request_line(line: str) -> bool:
 # --- rules -------------------------------------------------------------------------------
 
 
-def _quoted(text: str) -> str | None:
-    """Exactly one top-level quoted span, and everything else is a short instruction."""
+def _top_level_spans(text: str) -> list[tuple[int, int, str]]:
     spans: list[tuple[int, int, str]] = []
     for pattern in _QUOTE_PATTERNS:
         spans.extend((m.start(), m.end(), m.group(1)) for m in pattern.finditer(text))
-    top = [
+    return [
         s
         for s in spans
         if not any(o is not s and o[0] <= s[0] and s[1] <= o[1] for o in spans)  # drop nested
     ]
+
+
+def _instruction_quoted(text: str, instruction: str) -> str | None:
+    """The one quoted span that the router's instruction also quotes.
+
+    In a parallel plan ("translate «X» and compute Y") the rest of the prompt is another
+    task, so it is neither short nor a pure translate request. The router is allowed to
+    quote a short span exactly to tell such tasks apart (WP4 prompt), so a span it names
+    is the payload regardless of how long the surrounding prompt is.
+    """
+    key = _key(instruction)
+    named = {
+        inner.strip()
+        for _, _, inner in _top_level_spans(text)
+        if len(inner.strip()) >= 2 and _key(inner.strip()) in key
+    }
+    return named.pop() if len(named) == 1 else None
+
+
+def _quoted(text: str) -> str | None:
+    """Exactly one top-level quoted span, and everything else is a short instruction."""
+    top = _top_level_spans(text)
     if len(top) != 1:
         return None
     start, end, inner = top[0]
@@ -166,6 +187,8 @@ def extract_payload(inp: SkillInput) -> Payload:
     if inp.is_chained:
         return Payload(text=inp.text.strip(), method="chained", uncertain=False)
     text = inp.text.strip()
+    if (content := _instruction_quoted(text, inp.instruction)) is not None:
+        return Payload(text=content, method="quoted", uncertain=False)
     if (content := _quoted(text)) is not None:
         return Payload(text=content, method="quoted", uncertain=False)
     if (content := _after_colon(text)) is not None:
