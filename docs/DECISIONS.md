@@ -129,3 +129,18 @@ GitHub repo `multi-skill-agent`; Python package `skillagent`; CLI `python -m ski
   4. **Yes:** CONTRACTS v1.3 §13 records the calculator meta keys.
 - Its edit outside ownership (`tests/unit/skills_base/test_skills_scaffold.py`, excluding the calculator from the stub-output check) is accepted. WP3 must make the same one-line change for its three skills; the WP3 prompt is updated.
 - Untested so far: live tool-calling quality, which WP0/WP6 will measure.
+
+### ADR-023 — WP6a review outcome
+**Status:** Accepted
+- WP6a accepted and merged (`399df33`). Reproduced on Windows: 879 tests, ruff clean; 8 commits, placeholder identity, only `eval/**`, `tests/unit/eval/**` and its report touched.
+- `test_set.yaml` unchanged since the freeze commit `926a680`. All 15 slots match the WP6a table. Every `calc_values` entry recomputed by hand (test and dev): correct.
+- Answers: (1) **T09 gets no `also_ok`.** The user explicitly asks for a translation step and T09 is the only chain in the test set, so a single summarizer writing Persian counts as a miss. (2) Router few-shots are compared against the test set during the WP4 review (ADR-024) instead of a permanent cross-package test.
+- Owner's native review: `test_fa_qanat.md` / T02 OK; the other Persian test prompts are pending. Any fix is one recorded change before the first scored run.
+
+### ADR-024 — WP4 review outcome
+**Status:** Accepted; merge after WP3 (its card tests render the final SPEC texts)
+- Reproduced in `.worktrees/wp4`: 958 tests, ruff clean; 9 commits, placeholder identity, only router files touched. Public interface matches CONTRACTS §11; `build_messages` is an accepted additive public method.
+- Spot checks: lead hint «این متن رو summarize کن: <EN>» → `fa`; quoted spans ignored; fast path catches `2+2`, `(3+4)*2^3/7`, `۲۵ درصد از ۸۴۰` and rejects "what is 2+2 in Persian?" and "2 apples and 3 oranges".
+- Few-shot vs test set (normalized similarity): no copied prompt. The closest is the generic chain example "Summarize this article and translate the summary into Persian" vs T09 (ratio 0.66): the canonical chain phrasing required by the WP4 prompt, written without opening the test set. Disclosed here; not changed.
+- Answers: (1) `ROUTER_VIEW_TOKENS` stays a module constant (no need shown). (2) **Yes**, V8 should reset model-written `dropped_intents`; small architect follow-up in WP1-owned `core/types.py`, tracked for the WP5 window. (3) **Yes**, the architect runs the WP4 live smoke (≤ 20 calls) after WP0 finishes, and records `usage.prompt_tokens` so the scalability table uses provider-measured numbers.
+- Known risk: router system prompt ≈ 2.7k estimated tokens for 4 skills; on Groq (8K TPM) that limits throughput to a few router calls per minute. Trim examples first if eval hits it.
