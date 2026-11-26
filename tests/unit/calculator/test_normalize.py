@@ -80,6 +80,8 @@ def test_normalized_text_evaluates(text: str, value: Fraction) -> None:
         ("حاصل ۳*۴ را حساب کن", "۳*۴"),
         ("۵*۵ رو محاسبه کن", "۵*۵"),
         ("calculated 2+2", "calculated 2+2"),  # cue must be a whole word
+        ("compute 15% of 240.", "15% of 240"),  # sentence-final period dropped
+        ("2.5*4.", "2.5*4"),
     ],
 )
 def test_strip_cues(text: str, expected: str) -> None:
