@@ -74,7 +74,7 @@ _TRAILING_CUE = re.compile(
     rf"|چقدر{_SP}(?:{_MI}شود|{_MI}شه|است|هست)|چقدره"
     r")$"
 )
-_TRAILING_PUNCT = " =?؟!"
+_TRAILING_PUNCT = " =?؟!."  # a sentence-final period is not part of the expression
 
 
 def strip_cues(text: str) -> str:

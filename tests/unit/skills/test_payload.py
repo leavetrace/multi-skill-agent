@@ -188,3 +188,65 @@ def test_cue_only(text: str) -> None:
 )
 def test_not_cue_only(text: str) -> None:
     assert not is_cue_only(text)
+
+
+@pytest.mark.parametrize(
+    ("text", "instruction", "content"),
+    [
+        # Parallel plans: the rest of the prompt is another task, so only the router's
+        # quoted span identifies the payload (architect review of WP5, 2026-11-26).
+        (
+            "این جمله را به آلمانی ترجمه کن «صبح بخیر دوستان» و ۱۵ درصد از ۳۶۰ را هم حساب کن",
+            "Translate 'صبح بخیر دوستان' into German",
+            "صبح بخیر دوستان",
+        ),
+        (
+            'Please translate "Where is the station?" into French, then tell me how many '
+            "minutes are in three and a half hours and also what 18% of 650 is.",
+            "Translate 'Where is the station?' into French",
+            "Where is the station?",
+        ),
+    ],
+)
+def test_router_quoted_span_wins_in_parallel_prompts(
+    text: str, instruction: str, content: str
+) -> None:
+    p = extract_payload(SkillInput(text=text, instruction=instruction, response_language="en"))
+    assert (p.method, p.text, p.uncertain) == ("quoted", content, False)
+
+
+def test_unnamed_quotes_do_not_anchor() -> None:
+    text = 'He said "yes" and she said "no". Translate this whole dialogue into Persian please.'
+    p = extract_payload(
+        SkillInput(text=text, instruction="Translate the dialogue", response_language="en")
+    )
+    assert p.method != "quoted"
+
+
+@pytest.mark.parametrize(
+    ("text", "content"),
+    [
+        # Parallel prompts where the router does not quote the span (seen live on Groq).
+        (
+            "این جمله را به آلمانی ترجمه کن «صبح بخیر دوستان» و ۱۵ درصد از ۳۶۰ را هم حساب کن",
+            "صبح بخیر دوستان",
+        ),
+        (
+            "جملهٔ «کتاب بهترین دوست انسان است» را به انگلیسی ترجمه کن و بگو ۱۸ ضرب در ۲۴ "
+            "چند می‌شود و یک لطیفه هم تعریف کن",
+            "کتاب بهترین دوست انسان است",
+        ),
+    ],
+)
+def test_quoted_clause_in_parallel_prompts(text: str, content: str) -> None:
+    assert _extract(text) == ("quoted", content, False)
+
+
+def test_quote_inside_long_text_is_not_the_payload() -> None:
+    text = (
+        "Summarize this: The mayor opened the new library on Monday. She said "
+        '"reading changes lives" and thanked the volunteers who raised funds for '
+        "two years. The building has 40,000 books, a children's floor and a cafe."
+    )
+    method, content, _ = _extract(text)
+    assert method == "after_colon" and content.startswith("The mayor")
