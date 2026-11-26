@@ -64,6 +64,8 @@ class Candidate:
     think_probe: dict[str, Any] = field(default_factory=dict)  # kwargs tried in P1 #6b
     system_mode: Literal["system", "merge"] = "system"
     json_mode: bool = True
+    # Gemma counts hidden thoughts against max_tokens (P1 #3 truncated at 100), so P2-P4 need a floor.
+    max_tokens_floor: int = 0
 
 
 CANDIDATES: dict[str, Candidate] = {
@@ -111,6 +113,10 @@ class BudgetExceeded(RuntimeError):
     pass
 
 
+class ProviderUnavailable(RuntimeError):
+    """Raised when 503 'high demand' survives backoff: stop the candidate, don't burn budget."""
+
+
 _last_call: dict[str, float] = {}
 
 
@@ -148,10 +154,15 @@ def _summarize_request(kwargs: dict[str, Any]) -> dict[str, Any]:
     return summary
 
 
+ORG_ID_RE = re.compile(r"org_[A-Za-z0-9]+")
+
+
 def _write(cid: str, rec: dict[str, Any]) -> None:
+    """Append one record; provider error bodies can echo account ids, so those are redacted."""
     RESULTS.mkdir(exist_ok=True)
+    line = ORG_ID_RE.sub("org_<redacted>", json.dumps(rec, ensure_ascii=False))
     with log_path(cid).open("a", encoding="utf-8") as f:
-        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        f.write(line + "\n")
 
 
 def client_for(c: Candidate) -> openai.OpenAI:
@@ -165,6 +176,8 @@ def client_for(c: Candidate) -> openai.OpenAI:
 def chat(c: Candidate, phase: str, probe: str, **kwargs: Any) -> dict[str, Any]:
     """One budgeted, throttled, logged chat call with bounded 429/5xx retries."""
     cl = client_for(c)
+    if phase != "p1" and "max_tokens" in kwargs:
+        kwargs["max_tokens"] = max(kwargs["max_tokens"], c.max_tokens_floor)
     extra_wait = 0.0
     for attempt in range(MAX_RETRIES + 1):
         if calls_used(c.cid) >= BUDGET[c.cid]:
@@ -219,6 +232,8 @@ def chat(c: Candidate, phase: str, probe: str, **kwargs: Any) -> dict[str, Any]:
             extra_wait = float(retry_after) if retry_after else 5.0 * 2**attempt
             continue
         return rec
+    if rec["status"] == 503:
+        raise ProviderUnavailable(f"{c.cid}: 503 persisted after {MAX_RETRIES} backoff retries")
     return rec
 
 
@@ -437,6 +452,51 @@ def run_p1(c: Candidate) -> None:
     )
 
 
+def run_p1b(c: Candidate) -> None:
+    """C1 follow-up: P1 probes lost to 503s, plus Gemini-native thinking controls.
+
+    `reasoning_effort="none"` returned 400 ("Thinking budget is not supported for this
+    model"), so try the google `thinking_config` passthrough instead.
+    """
+    q = "What is the capital of France? Answer in one word."
+    chat(
+        c,
+        "p1",
+        "2_system_role",
+        messages=[
+            {"role": "system", "content": "Always answer in uppercase letters only."},
+            {"role": "user", "content": q},
+        ],
+        temperature=0,
+        max_tokens=50,
+    )
+    think_q = (
+        "A shop sells pens at 3 for $2. How much do 12 pens cost? Answer with just the amount."
+    )
+    for probe, cfg in (
+        ("6c_hide_thoughts", {"include_thoughts": False}),
+        ("6d_thinking_level_minimal", {"thinking_level": "minimal", "include_thoughts": False}),
+    ):
+        chat(
+            c,
+            "p1",
+            probe,
+            messages=[{"role": "user", "content": think_q}],
+            temperature=0,
+            max_tokens=2000,
+            extra_body={"extra_body": {"google": {"thinking_config": cfg}}},
+        )
+    chat(
+        c,
+        "p1",
+        "7_max_tokens",
+        messages=[{"role": "user", "content": "Write a 300-word essay about the ocean."}],
+        temperature=0,
+        max_tokens=20,
+        **c.no_think,
+    )
+
+
 def run_p2(c: Candidate, limit: int | None) -> None:
     probes = load_probes()
     paras = probes["paragraphs"]
@@ -506,7 +566,7 @@ class Plan(BaseModel):
     confidence: float = Field(ge=0, le=1)
 
 
-THINK_RE = re.compile(r"<think>.*?</think>", re.S)
+THINK_RE = re.compile(r"<(think|thought)>.*?</>", re.S)  # Qwen <think>, Gemma 4 <thought>
 FENCE_RE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.S)
 
 
@@ -650,7 +710,7 @@ def analyze_p3(records: list[dict[str, Any]], probes: dict[str, Any]) -> list[di
                 "arabic_yeh_kaf": len(ARABIC_YEH_KAF.findall(text)),
                 "zwnj": text.count("‌"),
                 "preamble": bool(PREAMBLE.search(text)),
-                "think_tag": "<think>" in text,
+                "think_tag": bool(THINK_RE.search(text)) or "<thought>" in text,
                 "expected_lang": item["out"],
                 "fa_ratio": round(fa, 2),
                 "latin_ratio": round(la, 2),
@@ -777,6 +837,18 @@ def review() -> None:
                 texts.setdefault(r["probe"], {})[cid] = r.get("text") or f"(error {r['status']})"
     rng = random.Random(20261126)
     handoffs = REPO / "docs" / "handoffs"
+    present = sorted({cid for outs in texts.values() for cid in outs})
+    missing = [f"{cid} ({CANDIDATES[cid].model})" for cid in CANDIDATES if cid not in present]
+    note = (
+        [
+            f"**Note:** only {len(present)} candidate produced Persian outputs; "
+            f"not run: {', '.join(missing)} (see `WP0_report.md` §6/§7). Labels are still "
+            "hidden, but with a single candidate this is an absolute rating, not a comparison.",
+            "",
+        ]
+        if len(present) < 2
+        else []
+    )
     sheet = [
         "# WP0 — Persian quality review (blind)",
         "",
@@ -789,12 +861,13 @@ def review() -> None:
         "",
         "Instruction prompts used (identical for all candidates) are listed in `WP0_report.md` §6.",
         "",
+        *note,
     ]
     key = [
         "# WP0 — Persian review key (do not open before scoring)",
         "",
-        "| Item | " + " | ".join("ABC"[: len(CANDIDATES)]) + " |",
-        "|---|" + "---|" * len(CANDIDATES),
+        "| Item | " + " | ".join("ABC"[: len(present)]) + " |",
+        "|---|" + "---|" * len(present),
     ]
     for n, item in enumerate(probes["persian"], 1):
         outs = texts.get(item["id"], {})
@@ -827,7 +900,7 @@ def review() -> None:
 def main() -> None:
     load_dotenv(find_dotenv(usecwd=True))
     ap = argparse.ArgumentParser()
-    ap.add_argument("phase", choices=["models", "p1", "p2", "p3", "p4", "analyze", "review"])
+    ap.add_argument("phase", choices=["models", "p1", "p1b", "p2", "p3", "p4", "analyze", "review"])
     ap.add_argument("--candidate", choices=sorted(CANDIDATES))
     ap.add_argument("--limit", type=int, help="P2: run only the first N probes (C3: 10)")
     a = ap.parse_args()
@@ -841,13 +914,14 @@ def main() -> None:
     runners = {
         "models": lambda: list_models(c),
         "p1": lambda: run_p1(c),
+        "p1b": lambda: run_p1b(c),
         "p2": lambda: run_p2(c, a.limit or (10 if c.cid == "C3" else None)),
         "p3": lambda: run_p3(c),
         "p4": lambda: run_p4(c),
     }
     try:
         runners[a.phase]()
-    except BudgetExceeded as e:
+    except (BudgetExceeded, ProviderUnavailable) as e:
         print(f"STOP: {e}")
     print(f"{c.cid}: {calls_used(c.cid)}/{BUDGET[c.cid]} calls used")
 
