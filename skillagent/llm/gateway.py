@@ -43,6 +43,8 @@ MAX_RETRY_AFTER_S = 60.0
 
 _JSON_MODE_REJECTED = re.compile(r"response_format|json_object|json mode", re.IGNORECASE)
 _KEY_LIKE = re.compile(r"\b(?:gsk_|sk-or-v1-|sk-|AIza)[A-Za-z0-9_\-]{8,}")
+# Groq echoes the account's organisation id in 429 bodies; it identifies the owner (ADR-029).
+_ACCOUNT_ID = re.compile(r"\borg_[A-Za-z0-9]{6,}")
 
 
 class OpenAICompatGateway:
@@ -272,7 +274,8 @@ class OpenAICompatGateway:
     def _redact(self, text: str) -> str:
         if self._secret:
             text = text.replace(self._secret, mask_secret(self._secret))
-        return _KEY_LIKE.sub(lambda m: mask_secret(m.group(0)), text)
+        text = _KEY_LIKE.sub(lambda m: mask_secret(m.group(0)), text)
+        return _ACCOUNT_ID.sub("org_<redacted>", text)
 
     # --- response parsing ---------------------------------------------------------------
 

@@ -348,3 +348,12 @@ async def test_context_isolation(run, fake_llm, plan, mk_step):
     dumped = str(inp.model_dump())
     assert "SECRET-RATIONALE" not in dumped
     assert "Spanish" not in inp.instruction and "búho" not in dumped
+
+
+async def test_router_quota_error_skips_the_fallback_call(run, fake_llm):
+    # ADR-029: after a router LLMRateLimitError the degraded chat call would be refused too.
+    llm = fake_llm(router=LLMRateLimitError("daily quota"), general_chat="should not be called")
+    result = await run("Hello there", llm)
+    assert purposes(llm) == ["router"]
+    assert result.results["s1"].status == "error"
+    assert result.response.startswith(APOLOGY)

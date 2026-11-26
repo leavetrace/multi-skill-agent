@@ -12,8 +12,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import logging
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -133,13 +134,28 @@ def _print_trace(run: AgentRun) -> None:
 # --- commands ----------------------------------------------------------------------------
 
 
+@contextlib.contextmanager
+def _quiet_retries(trace: bool) -> Iterator[None]:
+    """Gateway retry warnings ("llm retry … LLMRateLimitError") are normal on free tiers and
+    the gateway recovers from them; show them only when the user asked for a trace."""
+    logger = logging.getLogger("skillagent.llm")
+    previous = logger.level
+    if not trace:
+        logger.setLevel(logging.ERROR)
+    try:
+        yield
+    finally:
+        logger.setLevel(previous)
+
+
 @app.callback(invoke_without_command=True)
 def _root(ctx: typer.Context) -> None:
     """Without a subcommand, start the interactive session."""
     if ctx.invoked_subcommand is None:
         settings = _load_settings()
         try:
-            asyncio.run(_repl(settings, input))
+            with _quiet_retries(trace=False):
+                asyncio.run(_repl(settings, input))
         except ConfigError as exc:
             raise _config_error(exc) from None
         except KeyboardInterrupt:
@@ -167,7 +183,8 @@ def ask(
     text = file.read_text(encoding="utf-8-sig") if file is not None else prompt or ""
     settings = _load_settings()
     try:
-        run = asyncio.run(run_agent(text, settings=settings))
+        with _quiet_retries(trace):
+            run = asyncio.run(run_agent(text, settings=settings))
     except ConfigError as exc:
         raise _config_error(exc) from None
 

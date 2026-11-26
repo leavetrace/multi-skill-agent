@@ -173,3 +173,17 @@ async def test_repl_reuses_one_gateway(
     await cli._repl(make_settings(), scripted(["سلام", "", "hello again", "", ":quit"]))
     assert len(created) == 1 and created[0].closed
     assert llms == [created[0], created[0]]
+
+
+def test_quiet_retries_is_scoped_and_skipped_with_trace() -> None:
+    import logging
+
+    from skillagent.cli import _quiet_retries
+
+    logger = logging.getLogger("skillagent.llm")
+    before = logger.level
+    with _quiet_retries(trace=False):
+        assert logger.level == logging.ERROR
+    assert logger.level == before
+    with _quiet_retries(trace=True):
+        assert logger.level == before

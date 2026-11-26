@@ -122,11 +122,30 @@ def make_router(
             state["request"], llm, elapsed_ms=run_context(config).elapsed_ms
         )
         decision = result.decision
+        update: Update = {"trace": result.events}
         if decision.route_source == "fallback":
             decision = mark_degraded(decision)
-        return {"decision": decision, "trace": result.events}
+            if _rate_limited(result.events):
+                # The provider just refused for quota; a fallback chat call would be refused
+                # too (or spend quota on a degraded answer). Record the step as failed so the
+                # composer apologises without another call (ADR-029).
+                update["results"] = {
+                    s.id: SkillResult(
+                        step_id=s.id,
+                        skill=s.skill,
+                        status="error",
+                        error="LLMRateLimitError: skipped after router quota error",
+                    )
+                    for s in decision.steps
+                }
+        update["decision"] = decision
+        return update
 
     return route
+
+
+def _rate_limited(events: list[TraceEvent]) -> bool:
+    return any(e.event == "fallback" and e.data.get("error") == "LLMRateLimitError" for e in events)
 
 
 def route_after_router(state: AgentState) -> str:
