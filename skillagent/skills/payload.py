@@ -142,6 +142,31 @@ def _quoted(text: str) -> str | None:
     return content or None
 
 
+# Boundaries between the tasks of a multi-task prompt ("translate «X» and compute Y").
+_CLAUSE_BREAK = re.compile(
+    r"[,،;؛.!?؟\n]|\s(?:and|also|then|plus)\s|\s(?:و|همچنین|بعد|سپس)\s", re.IGNORECASE
+)
+
+
+def _quoted_in_clause(text: str) -> str | None:
+    """One quoted span whose own clause is a short request ("ترجمه کن «X»").
+
+    Covers parallel prompts where the rest of the message is a different task, so `_quoted`
+    rejects it as too long. Only the clause around the quote must carry the cue, which keeps
+    a quotation inside a long text to summarize from being mistaken for the payload.
+    """
+    top = _top_level_spans(text)
+    if len(top) != 1:
+        return None
+    start, end, inner = top[0]
+    before = _CLAUSE_BREAK.split(text[:start])[-1]
+    after = _CLAUSE_BREAK.split(text[end:])[0]
+    clause = f"{before} {after}".strip()
+    if not clause or _word_count(clause) > MAX_INSTRUCTION_WORDS or not _has_cue(clause):
+        return None
+    return inner.strip() or None
+
+
 def _instruction_colon(text: str) -> int | None:
     """Index of the first colon that can end an instruction.
 
@@ -190,6 +215,8 @@ def extract_payload(inp: SkillInput) -> Payload:
     if (content := _instruction_quoted(text, inp.instruction)) is not None:
         return Payload(text=content, method="quoted", uncertain=False)
     if (content := _quoted(text)) is not None:
+        return Payload(text=content, method="quoted", uncertain=False)
+    if (content := _quoted_in_clause(text)) is not None:
         return Payload(text=content, method="quoted", uncertain=False)
     if (content := _after_colon(text)) is not None:
         return Payload(text=content, method="after_colon", uncertain=False)

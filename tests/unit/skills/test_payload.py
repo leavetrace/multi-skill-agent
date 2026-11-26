@@ -221,3 +221,32 @@ def test_unnamed_quotes_do_not_anchor() -> None:
         SkillInput(text=text, instruction="Translate the dialogue", response_language="en")
     )
     assert p.method != "quoted"
+
+
+@pytest.mark.parametrize(
+    ("text", "content"),
+    [
+        # Parallel prompts where the router does not quote the span (seen live on Groq).
+        (
+            "این جمله را به آلمانی ترجمه کن «صبح بخیر دوستان» و ۱۵ درصد از ۳۶۰ را هم حساب کن",
+            "صبح بخیر دوستان",
+        ),
+        (
+            "جملهٔ «کتاب بهترین دوست انسان است» را به انگلیسی ترجمه کن و بگو ۱۸ ضرب در ۲۴ "
+            "چند می‌شود و یک لطیفه هم تعریف کن",
+            "کتاب بهترین دوست انسان است",
+        ),
+    ],
+)
+def test_quoted_clause_in_parallel_prompts(text: str, content: str) -> None:
+    assert _extract(text) == ("quoted", content, False)
+
+
+def test_quote_inside_long_text_is_not_the_payload() -> None:
+    text = (
+        "Summarize this: The mayor opened the new library on Monday. She said "
+        '"reading changes lives" and thanked the volunteers who raised funds for '
+        "two years. The building has 40,000 books, a children's floor and a cafe."
+    )
+    method, content, _ = _extract(text)
+    assert method == "after_colon" and content.startswith("The mayor")
