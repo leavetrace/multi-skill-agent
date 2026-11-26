@@ -412,3 +412,13 @@ async def test_finish_reason_is_reported(make_settings) -> None:
     gateway, _, _ = make_gateway(make_settings(), [completion("cut", finish_reason="length")])
     response = await gateway.complete([{"role": "user", "content": "hi"}])
     assert response.finish_reason == "length"
+
+
+def test_redact_masks_provider_account_ids() -> None:
+    # Groq 429 bodies name the account's organisation id (ADR-029).
+    from skillagent.config import Settings
+    from skillagent.llm.gateway import OpenAICompatGateway
+
+    gw = OpenAICompatGateway(Settings(llm_provider="groq", groq_api_key="gsk-test-0000"))
+    text = gw._redact("Rate limit in organization `org_01abcdefFAKE9999` on TPD")
+    assert "org_01abc" not in text and "org_<redacted>" in text
