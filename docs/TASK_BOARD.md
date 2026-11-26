@@ -1,7 +1,7 @@
 # TASK BOARD
 
 > Updated by the Chief Architect after every agent report. Agents do **not** edit this file; they report in `docs/handoffs/WPx_report.md`.
-> Last update: 2026-11-26 09:05 — WP3, WP4, WP0 accepted (trial merge: 1 130 tests). Merge order WP3 → WP4 → WP0. Provider decision pending (ADR-026). Router prompt must shrink for Groq TPM.
+> Last update: 2026-11-26 10:00 — WP0/WP3/WP4 merged (1 130 tests). Groq Qwen approved (ADR-026); `chore/groq-default` ready to merge. WP4b and WP5 prompts ready.
 
 ## Status legend
 ⬜ not started · 🟦 prompt ready · 🟨 in progress · 🟪 in review (architect) · ✅ accepted/merged · ⛔ blocked
@@ -19,32 +19,35 @@
 | WP | Title | Depends on | Branch | Status |
 |---|---|---|---|---|
 | WP1 | Foundation + git bootstrap | — | `feat/foundation` | ✅ accepted & merged |
-| WP0 | Provider/model bake-off spike | WP1 bootstrap commit, `.env` keys | `spike/model-bakeoff` | 🟪 accepted (ADR-026); merge after WP4 |
+| WP0 | Provider/model bake-off spike | WP1 bootstrap commit, `.env` keys | `spike/model-bakeoff` | ✅ accepted & merged |
 | WP2 | Calculator (safe evaluator, tool call, fast path) | WP1 merged | `feat/calculator` | ✅ accepted & merged |
-| WP3 | Text skills (Summarizer, Translator, General Chat) | WP1 merged (WP0 helpful) | `feat/text-skills` | 🟪 accepted (ADR-025); merge first |
-| WP4 | Router (+ fallback policy, Top-K selector) | WP1 merged (WP0 helpful) | `feat/router` | 🟪 accepted (ADR-024); merge after WP3; live smoke done (19/20) |
+| WP3 | Text skills (Summarizer, Translator, General Chat) | WP1 merged (WP0 helpful) | `feat/text-skills` | ✅ accepted & merged |
+| WP4 | Router (+ fallback policy, Top-K selector) | WP1 merged (WP0 helpful) | `feat/router` | ✅ accepted & merged |
+| WP4b | Compact router prompt for Groq TPM (≤ 2.5K tokens) | WP4, groq default | `feat/router-compact` | 🟦 prompt ready |
 | WP6a | Eval datasets (test 15 + dev 40) | contracts | `feat/eval-data` | ✅ accepted & merged (ADR-023) |
-| WP5 | Graph, scheduler, composer, CLI, scalability tests | WP1, WP4 | `feat/graph-cli` | ⬜ |
+| WP5 | Graph, scheduler, composer, CLI, scalability tests | WP1, WP4, groq default | `feat/graph-cli` | 🟦 prompt ready |
 | WP6b | Eval runner, metrics, baseline + iteration runs | WP5, WP6a | `feat/eval-runner` | ⬜ |
 | WP7 | Prompt iteration, README, final measured results, optional Docker | all | `docs/readme` | ⬜ |
 
 Critical path: WP1 → WP4 → WP5 → WP6b → WP7.
 
 ## Architect follow-ups
-- [ ] V8: reset model-written `dropped_intents` before applying the limit (`core/types.py`, ADR-024).
+- [x] V8 owns `dropped_intents` (`chore/groq-default`).
 - [x] WP4 live smoke on dev D01–D20 (Groq): 19/20 plans, 20/20 language, router prompt 4 732 provider tokens.
-- [ ] Trim the router prompt to ≤ 2.5K provider tokens for Groq TPM (ADR-026).
-- [ ] Gateway `strip_think`: also strip `<thought>` blocks and unwrap a lone `<message>` (ADR-025).
-- [ ] Rerun the WP3 live samples (13 calls) on the chosen provider.
-- [ ] CONTRACTS v1.4: ` + ` parallel notation, §14 text-skill `meta.postprocess`, wrapper no-truncation for payload skills.
-- [ ] Update `ProviderProfile` flags, `extra_body` and the default provider from the WP0 report (after the owner decides ADR-026).
+- [ ] Trim the router prompt to ≤ 2.5K provider tokens for Groq TPM → WP4b.
+- [x] `strip_think` handles `<thought>` and a lone `<message>` (`chore/groq-default`).
+- [x] WP3 live samples on Groq: 13/13 OK (`docs/handoffs/WP3_samples_groq.md`).
+- [x] CONTRACTS v1.4.
+- [x] Groq default provider and measured profile (`chore/groq-default`).
 
 ## Owner action items
 - [x] On the new computer: start the architect session (`agent_prompts/ARCHITECT_RESUME.md`); install uv.
 - [x] Launch WP3, WP4, WP6a (three PowerShell windows, Mode A).
 - [x] API keys in `.env` (rotated after an accidental paste in chat; verified 2026-11-26).
 - [x] Native review of the Persian test-set prompts (all OK, 2026-11-26).
-- [ ] Decide ADR-026 (primary provider) and score `docs/handoffs/WP0_persian_review.md` + `WP3_samples.md`.
+- [x] ADR-026 decided (Groq) and WP0 Persian items scored.
+- [ ] Merge `chore/groq-default`, then launch WP4b and WP5 in parallel.
+- [ ] Native review of `docs/handoffs/WP3_samples_groq.md` (after the merge).
 - [ ] Later (before first push): GitHub account + git name/email → architect gives history-rewrite commands (ADR-019).
 
 ## Risks
