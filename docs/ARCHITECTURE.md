@@ -1,6 +1,6 @@
 # ARCHITECTURE — Multi-Skill AI Agent
 
-> **Status: v1.0 — ACCEPTED by owner 2026-11-25.** Interfaces frozen in `docs/CONTRACTS.md` (currently v1.3; normative; wins over §3 below if they ever differ).
+> **Status: v1.0 — ACCEPTED by owner 2026-11-25.** Interfaces frozen in `docs/CONTRACTS.md` (currently v1.4; normative; wins over §3 below if they ever differ).
 > Owner: Chief Architect (coordinator session). Single source of truth for design.
 > Any agent that finds a conflict between its task prompt and this file must stop and report it, not resolve it silently.
 
@@ -136,7 +136,7 @@ So the scalability story rests on **six code-enforced mechanisms**, not on promp
 - Hard caps: `max_steps`, `max_waves`, overall `request_deadline_s`. The LangGraph `recursion_limit` is set from these caps as a backstop.
 
 ### 4.5 Skill nodes (one per registered skill, generated)
-Generic wrapper: build `SkillInput` (resolve `text` from user or dependency, then truncate to `budget.max_input_tokens`), run `spec.run` under `asyncio.wait_for(timeout_s)`, convert exceptions into `SkillResult(status=error)`, and record latency and tokens in `meta`.
+Generic wrapper: build `SkillInput` (resolve `text` from user or dependency; truncate to `budget.max_input_tokens` only for skills without `requires_payload`, because payload skills own their budgets — CONTRACTS §15), run `spec.run` under `asyncio.wait_for(timeout_s)`, convert exceptions into `SkillResult(status=error)`, and record latency and tokens in `meta`.
 
 | Skill | Approach (prompt details in WP3/WP2 prompts) |
 |---|---|

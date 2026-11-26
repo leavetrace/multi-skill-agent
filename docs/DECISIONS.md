@@ -35,7 +35,7 @@
 **Assumption (documented):** A summary is written in the user's instruction language unless the user specifies otherwise.
 
 ### ADR-006 — OpenAI-compatible gateway; provider chosen by measured bake-off
-**Status:** Accepted (direction) — model id final after WP0 measurements + owner's Persian review
+**Status:** Accepted (direction). Leading candidate **superseded by ADR-026**: Groq Qwen3.8-27B is primary.
 **Leading candidate:** Gemma 4 31B IT (30.7B dense) via Google AI Studio free tier. **Alternate:** Qwen3.8-27B (27B dense) via Groq free tier.
 **Rejected as primary:** OpenRouter `:free` models, capped at 50 requests/day without purchased credits, which is too few for evaluation iteration.
 **Rule:** Prefer dense models so "≤35B parameters" is unambiguous.
@@ -155,7 +155,9 @@ GitHub repo `multi-skill-agent`; Python package `skillagent`; CLI `python -m ski
 - Gemma's `<thought>…</thought>` / `<message>` wrapping is fixed once, in the gateway's `strip_think` (WP1-owned, architect follow-up), not per skill.
 
 ### ADR-026 — WP0 outcome: provider choice
-**Status:** Proposed (architect recommendation; awaits owner decision and Persian scores)
+**Status:** Accepted (owner approved Groq Qwen, 2026-11-26). Supersedes ADR-006's leading candidate.
+- Owner's Persian scores for Qwen (9 WP0 items, `docs/handoffs/WP0_persian_scores.md`): fluency 4.3, accuracy 3.8, naturalness 3.4. Strong on entities, formal translation and summaries; weak on colloquial idioms, register matching, technical terms and jokes. These become translator/general-chat v2 targets.
+- Implemented on `chore/groq-default`: default provider `groq`, `extra_body={"reasoning_effort": "none"}`, `strip_think` handles Gemma's `<thought>` and lone `<message>` wrapper, V8 owns `dropped_intents` (CONTRACTS v1.4).
 - Measured 2026-11-26: Groq `qwen/qwen3.8-27b` (27B dense) passed every capability probe, routing 20/20 with the draft prompt, calculator extraction 5/5, clean Persian automated checks, p50 ≈ 0.9 s. Google `gemma-4-31b-it`: 18 of 26 chat calls returned 503 "high demand" in a 35-minute window; successful calls took 8–70 s and leaked `<thought>` reasoning into content, with no working thinking-off switch. Routing/Persian for Gemma were never measured.
 - **Recommendation:** amend ADR-006 so Groq / Qwen3.8-27B is primary (`llm_provider` default `groq`, `extra_body={"reasoning_effort": "none"}`, system role, JSON mode and tools supported). Gemma 4 31B on Google stays configured as the documented alternate, with `<thought>` stripping in the gateway.
 - Consequences: Groq's free tier limits are 8K tokens/min and 1K output tokens/min, so the router prompt must be trimmed (target ≤ 2.5K provider tokens) and the gateway must honour `retry-after` (it does). Qwen3.8-27B is a Groq **preview** model, so deprecation risk is real and the alternate stays wired.

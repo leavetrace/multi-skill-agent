@@ -1,4 +1,4 @@
-# CONTRACTS — v1.3 (FROZEN 2026-11-25; v1.1–v1.3 additive amendments)
+# CONTRACTS — v1.4 (FROZEN 2026-11-25; v1.1–v1.4 amendments, see changelog)
 
 > **Normative.** These are the interfaces every work package builds against. Names, fields and semantics here are binding.
 > Implementation lives in `skillagent/` (WP1 creates it). If an agent believes a contract is wrong, it **must not change it unilaterally**: implement as specified, describe the problem in its handoff report under "Contract deviations / proposals", and the architect decides.
@@ -64,7 +64,7 @@ Validation **context** (optional): `RoutingDecision.model_validate(data, context
 | V5 | registry | `skill` resolves case-/separator-insensitively (`"General Chat"`, `"general-chat"` → `general_chat`); unknown ⇒ error |
 | V6 | registry | if `input_from` is a step X: `registry[X.skill].output_kind ∈ registry[skill].accepts`, else error |
 | V7 | registry | if the spec has `params_model`: `params = params_model.model_validate(params).model_dump(exclude_none=True)` (extra keys ignored); invalid ⇒ error |
-| V8 | max_skills | if `len(steps) > max_skills`: keep the first `max_skills` steps; for each removed step append its `instruction` to `dropped_intents`. Kept steps can only reference earlier steps, so they stay valid. |
+| V8 | max_skills | `dropped_intents` is **owned by code** (v1.4): it is set to the `instruction` of every step beyond the first `max_skills`, and those steps are removed; anything the model wrote there is discarded. Kept steps can only reference earlier steps, so they stay valid. |
 
 Errors raise `pydantic.ValidationError` (so the router's repair loop can feed the message back to the LLM).
 
@@ -134,7 +134,8 @@ class SkillBudget(BaseModel):
 
 class RouterExample(BaseModel):
     prompt: str
-    plan: str     # compact notation, e.g. 'summarizer(user) -> translator(s1, target_language=fa)'
+    plan: str     # compact notation: chain 'summarizer(user) -> translator(s1, target_language=fa)',
+                  # parallel 'translator(user, target_language=de) + calculator(user)' (v1.4)
 
 @dataclass(frozen=True)
 class SkillContext:
@@ -255,7 +256,7 @@ class LLMClient(Protocol):
 `SkillAgentError` → `ConfigError`, `UnknownSkillError`, `DuplicateSkillError`, `LLMError` → (`LLMTimeoutError`, `LLMRateLimitError`, `LLMProviderError`), `StructuredOutputError(raw_text: str, errors: str)`.
 
 ## 6. Language utilities — `skillagent/core/language.py`
-`normalize_persian(text) -> str` · `to_ascii_digits(text) -> str` · `to_persian_digits(text) -> str` · `detect_lang_hint(text) -> LangHint` · `estimate_tokens(text) -> int` · `truncate_to_tokens(text, max_tokens) -> tuple[str, bool]` · `normalize_lang_code(value) -> str` · `strip_think(text) -> str` · `extract_json_object(text) -> str`. Behaviour is specified in `agent_prompts/WP1_foundation.md` §4.
+`normalize_persian(text) -> str` · `to_ascii_digits(text) -> str` · `to_persian_digits(text) -> str` · `detect_lang_hint(text) -> LangHint` · `estimate_tokens(text) -> int` · `truncate_to_tokens(text, max_tokens) -> tuple[str, bool]` · `normalize_lang_code(value) -> str` · `strip_think(text) -> str` (v1.4: `<think>` and `<thought>` blocks, lone `<message>` wrapper) · `extract_json_object(text) -> str`. Behaviour is specified in `agent_prompts/WP1_foundation.md` §4.
 
 ## 7. Prompts — `skillagent/prompts/`
 Files: `skillagent/prompts/<name>/v<N>.md` (e.g. `router/v1.md`). Placeholders use `string.Template` syntax (`$var` / `${var}`), so JSON braces need no escaping.
@@ -277,7 +278,7 @@ Pinning comes from settings `SKILLAGENT_PROMPT_VERSIONS="router=1,translator=2"`
 
 | Field | Env | Default |
 |---|---|---|
-| llm_provider | SKILLAGENT_LLM_PROVIDER | `google` (`google`\|`groq`\|`openrouter`\|`custom`) |
+| llm_provider | SKILLAGENT_LLM_PROVIDER | `groq` (v1.4, ADR-026; `groq`\|`google`\|`openrouter`\|`custom`) |
 | llm_model | SKILLAGENT_LLM_MODEL | provider default (see providers table) |
 | llm_base_url | SKILLAGENT_LLM_BASE_URL | provider default |
 | google_api_key / groq_api_key / openrouter_api_key / custom_api_key | GOOGLE_API_KEY / GROQ_API_KEY / OPENROUTER_API_KEY / SKILLAGENT_CUSTOM_API_KEY | None (SecretStr) |
@@ -295,7 +296,7 @@ Pinning comes from settings `SKILLAGENT_PROMPT_VERSIONS="router=1,translator=2"`
 | prompt_versions | SKILLAGENT_PROMPT_VERSIONS | "" → dict[str,int] |
 | log_level | SKILLAGENT_LOG_LEVEL | WARNING |
 
-Provider table (`skillagent/llm/providers.py`, `ProviderProfile`): `base_url`, `default_model`, `api_key_field`, `supports_system_role: bool`, `supports_json_mode: bool`, `supports_tools: bool`, `extra_body: dict` (e.g. thinking control). Initial values are **provisional** until WP0 measures them:
+Provider table (`skillagent/llm/providers.py`, `ProviderProfile`): `base_url`, `default_model`, `api_key_field`, `supports_system_role: bool`, `supports_json_mode: bool`, `supports_tools: bool`, `extra_body: dict` (e.g. thinking control). Values measured by WP0 (ADR-026): all flags `True`; groq `extra_body={"reasoning_effort": "none"}`; google has no working thinking-off switch, so `strip_think` removes its `<thought>` blocks.
 
 | provider | base_url | default_model |
 |---|---|---|
@@ -371,6 +372,13 @@ def extract_payload(inp: SkillInput) -> Payload
 `path`: `"direct" | "tool" | "json_fallback"` · `calculations`: list of `{expression, label, value, exact, error}`, where `value` is canonical ASCII and ungrouped (e.g. `"397.8"`, `"0.333333333333"`), `exact` is the exact form (`"1/3"`), and `error` is a code or null · `prompt_version` (null on the direct path) · `llm_calls` · `repairs` · `reason` on rejected outputs (`no_calculation` | `invalid_expressions`).
 Eval compares `calc_values` against `calculations[].value`. Traces should elide very long `exact` strings (up to ~5 000 chars).
 
+## 14. Text-skill `SkillOutput.meta` (v1.4, implemented by WP3; read by WP5 trace and WP6 eval)
+Common keys for `summarizer`, `translator`, `general_chat`: `prompt_version`, `prompt_sha`, `llm_calls` (0 on deterministic rejections), `input_tokens`, `truncated_output`, `delimiters_escaped`, `reason` on rejected outputs, and `postprocess: dict[str, bool]`, one flag per clean-up rule that fired: `think_stripped`, `preamble_removed`, `wrapper_removed`, `persian_normalized`, `persian_digits`, `ascii_digits` (only the rules that apply to that skill and language are present). Eval counts leakage from these flags.
+Skill-specific: translator `payload_method`, `payload_uncertain`, `source_language`, `source_detected`, `target_language`, `target_defaulted`, `pass_through`; summarizer `payload_method`, `payload_uncertain`, `word_count`, `length`, `format`, `output_language`, `truncated_input`; general_chat `degraded`, `response_language`.
+
+## 15. Skill-node input budgets (v1.4, binding for WP5)
+The skill-node wrapper does **not** truncate `SkillInput.text` for skills with `requires_payload=True`: those skills own their budgets (translator rejects over budget, summarizer truncates with a visible note up to 2× and rejects beyond, ADR-025). For other skills the wrapper may truncate to `budget.max_input_tokens` and records `meta["input_truncated"]=True`.
+
 ---
 
 ## Changelog
@@ -387,3 +395,9 @@ Eval compares `calc_values` against `calculations[].value`. Traces should elide 
   - §11 router public interface (`Router`, `RouteResult`, `build_user_request`, `leading_segment_hint`, `CandidateSelector`)
   - §12 payload extraction helper
 - v1.3 (2026-11-25, after WP2 review): §13 calculator meta keys
+- v1.4 (2026-11-26, after WP0/WP3/WP4 reviews; ADR-024..026):
+  - V8: `dropped_intents` owned by code; model-written values are discarded (behaviour change)
+  - §2 `RouterExample.plan`: ` + ` notation for parallel steps
+  - §6 `strip_think` also removes `<thought>…</thought>` and unwraps a reply wrapped whole in `<message>`
+  - §8 default provider `groq`; measured profile values
+  - §14 text-skill meta keys; §15 wrapper input-budget rule
