@@ -75,8 +75,11 @@ def _script_of(char: str) -> Script:
 def dominant_script(text: str) -> tuple[Script, int, int]:
     """(`fa` | `latin` | `none`, Persian-script letters, Latin letters).
 
-    Letters only: digits, punctuation and markdown are ignored, so «= ۸۸» or `**Summary**`
-    labels cannot tip the balance. A strict majority wins; a tie or no letters is `none`.
+    Letters decide: digits, punctuation and markdown are ignored, so `**Summary**` labels
+    cannot tip the balance, and a strict majority wins. A response with no letters at all
+    (a bare calculator answer such as `25 * 4 - 12 = ۸۸`) falls back to digits: any
+    Persian/Arabic-Indic digit means `fa`, because the composer localizes results and the
+    echoed expression is always ASCII; ASCII digits alone mean `latin`. Otherwise `none`.
     """
     counts = {"fa": 0, "latin": 0, "none": 0}
     for char in text:
@@ -85,6 +88,10 @@ def dominant_script(text: str) -> tuple[Script, int, int]:
     if fa > latin:
         return "fa", fa, latin
     if latin > fa:
+        return "latin", fa, latin
+    if fa == 0 and any("۰" <= c <= "۹" or "٠" <= c <= "٩" for c in text):
+        return "fa", fa, latin
+    if fa == 0 and any("0" <= c <= "9" for c in text):
         return "latin", fa, latin
     return "none", fa, latin
 

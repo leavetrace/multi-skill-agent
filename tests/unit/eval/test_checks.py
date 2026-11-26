@@ -14,7 +14,10 @@ from eval.checks import CHECKS, dominant_script, has_preamble, run_checks
         ("موزه در روزهای تعطیل رسمی بسته است.", "fa"),
         ("**Translation**\nموزه در روزهای تعطیل بسته است.", "fa"),  # label ignored by count
         ("**خلاصه**\nSolar panels turn sunlight into electricity.", "latin"),
-        ("۱۲۰ = 120", "none"),  # digits only: no letters
+        # No letters: digits decide (dev D06, a direct-path calculator answer).
+        ("25 * 4 - 12 = ۸۸", "fa"),
+        ("(17/100)*2340 = 397.8", "latin"),
+        ("= ?", "none"),
         ("", "none"),
     ],
 )
