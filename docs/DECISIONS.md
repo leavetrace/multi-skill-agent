@@ -180,3 +180,10 @@ GitHub repo `multi-skill-agent`; Python package `skillagent`; CLI `python -m ski
 - Also on `fix/review-followups`: calculator direct path drops a sentence-final period (`(15/100)*240. = 36` → `(15/100)*240 = 36`), as WP5 reported.
 - Answers: (1) Retry warnings: the CLI will keep `skillagent.llm` at ERROR unless `--trace` (small architect follow-up after merge). (2) Yes, the README embeds the Mermaid output. (3) Fixed (above).
 - WP5's scalability token table used the old v1 router prompt; WP7 regenerates it after WP4b is merged.
+### ADR-029 — WP6b review outcome (eval runner) and the Groq daily quota
+**Status:** Accepted
+- Reproduced in `.worktrees/wp6b`: 1 289 tests, ruff clean; 16 commits, only `eval/**`, `tests/unit/eval/**` and its handoff. The test-set guard refuses `--set test` without `--i-know-this-is-the-test-set`; `--dry-run` makes 0 calls. No real Groq account id is in any commit (`git log -S`).
+- Dev v1 baseline is **partial: D01–D10, 10/10 routing-correct**. Not a baseline number; D11–D40 hold every hard category.
+- **Groq free tier also limits tokens per day: 200 000 (TPD)**, measured from the 429 body. One eval case costs ~3 000 tokens (router ~2 300), so a day covers ~65 cases, shared with every other Groq session on the account. Consequences: live work is budgeted **per day**; the final test-set run (15 × 3 ≈ 135K tokens) gets a day to itself; dev iteration uses `--resume` and fewer runs.
+- Answers: (1) Amendment accepted (this ADR). (2) **Yes**, the gateway will redact `org_…` itself (architect follow-up); the eval redaction stays as a second line. (3) Replace the partial report with the merged one when D11–D40 run; git keeps the history.
+- Proposals carried to WP7: after a router `LLMRateLimitError`, skip the fallback skill call; degraded fallback wording should suggest retrying later.

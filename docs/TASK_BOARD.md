@@ -1,7 +1,7 @@
 # TASK BOARD
 
 > Updated by the Chief Architect after every agent report. Agents do **not** edit this file; they report in `docs/handoffs/WPx_report.md`.
-> Last update: 2026-11-26 16:30 — WP4b and WP5 accepted (ADR-027/028); architect fixes on `fix/review-followups`; trial merge 1 206 tests. WP6b prompt ready.
+> Last update: 2026-11-26 20:00 — WP4b, WP5, architect fixes merged. WP6b accepted (ADR-029); dev baseline partial (D01–D10 10/10) because of Groq's 200K tokens/day limit. D11–D40 resume next day.
 
 ## Status legend
 ⬜ not started · 🟦 prompt ready · 🟨 in progress · 🟪 in review (architect) · ✅ accepted/merged · ⛔ blocked
@@ -23,10 +23,10 @@
 | WP2 | Calculator (safe evaluator, tool call, fast path) | WP1 merged | `feat/calculator` | ✅ accepted & merged |
 | WP3 | Text skills (Summarizer, Translator, General Chat) | WP1 merged (WP0 helpful) | `feat/text-skills` | ✅ accepted & merged |
 | WP4 | Router (+ fallback policy, Top-K selector) | WP1 merged (WP0 helpful) | `feat/router` | ✅ accepted & merged |
-| WP4b | Compact router prompt for Groq TPM (≤ 2.5K tokens) | WP4, groq default | `feat/router-compact` | 🟪 accepted (ADR-027); merge |
+| WP4b | Compact router prompt for Groq TPM (≤ 2.5K tokens) | WP4, groq default | `feat/router-compact` | ✅ accepted & merged |
 | WP6a | Eval datasets (test 15 + dev 40) | contracts | `feat/eval-data` | ✅ accepted & merged (ADR-023) |
-| WP5 | Graph, scheduler, composer, CLI, scalability tests | WP1, WP4, groq default | `feat/graph-cli` | 🟪 accepted (ADR-028); merge |
-| WP6b | Eval runner, metrics, dev baseline | WP5, WP6a | `feat/eval-runner` | 🟦 prompt ready |
+| WP5 | Graph, scheduler, composer, CLI, scalability tests | WP1, WP4, groq default | `feat/graph-cli` | ✅ accepted & merged |
+| WP6b | Eval runner, metrics, dev baseline | WP5, WP6a | `feat/eval-runner` | 🟪 accepted (ADR-029); merge; dev D11–D40 next day |
 | WP7 | Prompt iteration, README, final measured results, optional Docker | all | `docs/readme` | ⬜ |
 
 Critical path: WP1 → WP4 → WP5 → WP6b → WP7.
@@ -36,7 +36,10 @@ Critical path: WP1 → WP4 → WP5 → WP6b → WP7.
 - [x] WP4 live smoke on dev D01–D20 (Groq): 19/20 plans, 20/20 language, router prompt 4 732 provider tokens.
 - [x] Router prompt trimmed to ~2.3K provider tokens (WP4b).
 - [x] Payload fix for Persian parallel prompts; calculator trailing period (`fix/review-followups`).
-- [ ] CLI: hide gateway retry warnings unless `--trace` (after WP5 merge).
+- [ ] CLI: hide gateway retry warnings unless `--trace`.
+- [ ] Gateway: redact `org_…` provider account ids (ADR-029).
+- [ ] Resume dev v1 baseline D11–D40 on a fresh daily quota (raw log copied to root `eval/reports/raw/`).
+- [ ] Write WP7 prompt (v2 prompts from dev failures + owner scores, test ×3 on its own quota day, README, identity rewrite, push).
 - [x] `strip_think` handles `<thought>` and a lone `<message>` (`chore/groq-default`).
 - [x] WP3 live samples on Groq: 13/13 OK (`docs/handoffs/WP3_samples_groq.md`).
 - [x] CONTRACTS v1.4.
@@ -49,7 +52,8 @@ Critical path: WP1 → WP4 → WP5 → WP6b → WP7.
 - [x] Native review of the Persian test-set prompts (all OK, 2026-11-26).
 - [x] ADR-026 decided (Groq) and WP0 Persian items scored.
 - [x] Merge `chore/groq-default`; WP4b and WP5 done.
-- [ ] Merge `feat/router-compact`, `feat/graph-cli`, `fix/review-followups`; then launch WP6b.
+- [x] Merged `feat/router-compact`, `feat/graph-cli`, `fix/review-followups`; WP6b done.
+- [ ] Merge `feat/eval-runner`.
 - [x] Native review of the WP3 samples on Groq (4.62 / 4.69 / 4.15, `WP3_samples_groq_scores.md`).
 - [ ] Later (before first push): GitHub account + git name/email → architect gives history-rewrite commands (ADR-019).
 
