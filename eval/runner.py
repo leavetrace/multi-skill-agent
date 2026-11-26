@@ -40,7 +40,7 @@ from eval.report import PromptInfo, ReportMeta, UsageTotals, render_report, writ
 from eval.schema import EvalCase, load_cases, render_prompt
 from skillagent.api import AgentRun, run_agent
 from skillagent.config import Settings
-from skillagent.core.errors import ConfigError
+from skillagent.core.errors import ConfigError, LLMRateLimitError
 from skillagent.core.language import estimate_tokens
 from skillagent.core.registry import SkillRegistry
 from skillagent.llm import OpenAICompatGateway, resolve_profile
@@ -105,18 +105,28 @@ class MeteredLLM:
 
     `complete_structured` reuses the shared repair loop with `self.complete`, so each repair
     round is metered exactly like the gateway would send it.
+
+    It is also a circuit breaker: once a call raised `LLMRateLimitError`, every later call
+    fails locally without reaching the provider. The run stops after that case anyway, and
+    without the breaker the router's `general_chat` fallback would spend tokens on a case
+    that is discarded.
     """
 
     def __init__(self, inner: LLMClient) -> None:
         self.inner = inner
         self.records: list[CallRecord] = []
+        self.tripped: str | None = None
 
     async def complete(self, messages: list[ChatMessage], **kwargs: Any) -> LLMResponse:
         purpose = str(kwargs.get("purpose", ""))
         temperature = kwargs.get("temperature")
+        if self.tripped is not None:
+            raise LLMRateLimitError(f"not sent: an earlier call hit the limit ({self.tripped})")
         try:
             response = await self.inner.complete(messages, **kwargs)
         except Exception as exc:
+            if isinstance(exc, LLMRateLimitError):
+                self.tripped = redact_ids(str(exc))[:120]
             self.records.append(
                 CallRecord(
                     purpose=purpose,

@@ -339,3 +339,20 @@ def test_resume_rejects_a_changed_prompt_or_other_set(tmp_path: Path) -> None:
     assert _run_main(["--cases", "D01", "--resume", str(edited)], None, tmp_path / "b")[0] == 2
     # The resumed log names D01, which is not among the selected cases.
     assert _run_main(["--cases", "D07", "--resume", str(raw)], None, tmp_path / "c")[0] == 2
+
+
+async def test_metered_llm_trips_after_a_rate_limit() -> None:
+    inner = FakeLLM(
+        [
+            FakeRule(match="first", reply=LLMRateLimitError("quota org_secret1"), times=1),
+            FakeRule(match=".*", reply="fine"),
+        ]
+    )
+    metered = MeteredLLM(inner)
+    with pytest.raises(LLMRateLimitError):
+        await metered.complete([{"role": "user", "content": "first"}], purpose="router")
+    with pytest.raises(LLMRateLimitError, match="not sent"):
+        await metered.complete([{"role": "user", "content": "second"}], purpose="skill:x")
+    assert len(inner.calls) == 1  # the second call never reached the provider
+    assert metered.calls == 1
+    assert metered.tripped is not None and "org_secret1" not in metered.tripped
