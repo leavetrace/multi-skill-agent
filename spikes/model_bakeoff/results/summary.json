@@ -1,0 +1,582 @@
+{
+  "generated": "2026-11-26T08:23:11+00:00",
+  "C1": {
+    "model": "gemma-4-31b-it",
+    "live_calls": 28,
+    "calls_by_phase": {
+      "models": 2,
+      "p1": 26
+    },
+    "non_200": [
+      {
+        "phase": "p1",
+        "probe": "1_plain",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "1_plain",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "2_system_role",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "2_system_role",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "2_system_role",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "4_json_schema",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "4_json_schema",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "5_tool_forced",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "6a_think_default",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "6b_think_off",
+        "status": 400
+      },
+      {
+        "phase": "p1",
+        "probe": "7_max_tokens",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "7_max_tokens",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "7_max_tokens",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "2_system_role",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "6c_hide_thoughts",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "6c_hide_thoughts",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "6d_thinking_level_minimal",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "6d_thinking_level_minimal",
+        "status": 503
+      },
+      {
+        "phase": "p1",
+        "probe": "6d_thinking_level_minimal",
+        "status": 503
+      }
+    ],
+    "p2": {
+      "n": 0,
+      "strict_parse_pct": null,
+      "lenient_parse_pct": null,
+      "schema_valid_pct": null,
+      "skill_set_accuracy_pct": null,
+      "exact_accuracy_pct": null,
+      "multi_structure_pass": "0/0",
+      "latency_p50_s": null,
+      "latency_p95_s": null,
+      "rows": []
+    },
+    "p3": [],
+    "p4": []
+  },
+  "C2": {
+    "model": "qwen/qwen3.8-27b",
+    "live_calls": 45,
+    "calls_by_phase": {
+      "models": 1,
+      "p1": 8,
+      "p2": 21,
+      "p3": 10,
+      "p4": 5
+    },
+    "non_200": [
+      {
+        "phase": "p2",
+        "probe": "19",
+        "status": 429
+      },
+      {
+        "phase": "p3",
+        "probe": "t_en_fa_entities",
+        "status": 429
+      }
+    ],
+    "p2": {
+      "n": 20,
+      "strict_parse_pct": 100.0,
+      "lenient_parse_pct": 100.0,
+      "schema_valid_pct": 100.0,
+      "skill_set_accuracy_pct": 100.0,
+      "exact_accuracy_pct": 100.0,
+      "multi_structure_pass": "4/4",
+      "latency_p50_s": 0.91,
+      "latency_p95_s": 2.12,
+      "rows": [
+        {
+          "id": 1,
+          "expect": "summarizer",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "summarizer",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 2,
+          "expect": "summarizer",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "summarizer",
+          "lang": "fa",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 3,
+          "expect": "translator",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "translator",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 4,
+          "expect": "translator",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "translator",
+          "lang": "fa",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 5,
+          "expect": "calculator",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "calculator",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 6,
+          "expect": "calculator",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "calculator",
+          "lang": "fa",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 7,
+          "expect": "general_chat",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "general_chat",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 8,
+          "expect": "general_chat",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "general_chat",
+          "lang": "fa",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 9,
+          "expect": "general_chat",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "general_chat",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 10,
+          "expect": "summarizer->translator",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "summarizer->translator",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 11,
+          "expect": "translator||calculator",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "translator||calculator",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 12,
+          "expect": "summarizer",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "summarizer",
+          "lang": "fa",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 13,
+          "expect": "CLARIFY",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "CLARIFY",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 14,
+          "expect": "general_chat",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "general_chat",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 15,
+          "expect": "calculator->translator",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "calculator->translator",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 16,
+          "expect": "summarizer->translator",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "summarizer->translator",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 17,
+          "expect": "general_chat",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "general_chat",
+          "lang": "fa",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 18,
+          "expect": "translator",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "translator",
+          "lang": "fa",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 19,
+          "expect": "calculator",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "calculator",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        },
+        {
+          "id": 20,
+          "expect": "CLARIFY",
+          "status": 200,
+          "strict_parse": true,
+          "lenient_parse": true,
+          "valid": true,
+          "got": "CLARIFY",
+          "lang": "en",
+          "skill_set_pass": true,
+          "exact_pass": true
+        }
+      ]
+    },
+    "p3": [
+      {
+        "id": "t_en_fa_casual",
+        "status": 200,
+        "chars": 131,
+        "arabic_yeh_kaf": 0,
+        "zwnj": 1,
+        "preamble": false,
+        "think_tag": false,
+        "expected_lang": "fa",
+        "fa_ratio": 1.0,
+        "latin_ratio": 0.0,
+        "script_ok": true,
+        "latency_s": 0.792,
+        "tokens_out": 47
+      },
+      {
+        "id": "t_en_fa_technical",
+        "status": 200,
+        "chars": 500,
+        "arabic_yeh_kaf": 0,
+        "zwnj": 20,
+        "preamble": false,
+        "think_tag": false,
+        "expected_lang": "fa",
+        "fa_ratio": 0.97,
+        "latin_ratio": 0.03,
+        "script_ok": true,
+        "latency_s": 0.844,
+        "tokens_out": 177
+      },
+      {
+        "id": "t_en_fa_entities",
+        "status": 200,
+        "chars": 101,
+        "arabic_yeh_kaf": 0,
+        "zwnj": 1,
+        "preamble": false,
+        "think_tag": false,
+        "expected_lang": "fa",
+        "fa_ratio": 1.0,
+        "latin_ratio": 0.0,
+        "script_ok": true,
+        "latency_s": 0.72,
+        "tokens_out": 54
+      },
+      {
+        "id": "t_fa_en_formal",
+        "status": 200,
+        "chars": 257,
+        "arabic_yeh_kaf": 0,
+        "zwnj": 0,
+        "preamble": false,
+        "think_tag": false,
+        "expected_lang": "en",
+        "fa_ratio": 0.0,
+        "latin_ratio": 1.0,
+        "script_ok": true,
+        "latency_s": 0.574,
+        "tokens_out": 50
+      },
+      {
+        "id": "t_fa_en_colloquial",
+        "status": 200,
+        "chars": 114,
+        "arabic_yeh_kaf": 0,
+        "zwnj": 0,
+        "preamble": false,
+        "think_tag": false,
+        "expected_lang": "en",
+        "fa_ratio": 0.0,
+        "latin_ratio": 1.0,
+        "script_ok": true,
+        "latency_s": 0.937,
+        "tokens_out": 30
+      },
+      {
+        "id": "s_fa_water",
+        "status": 200,
+        "chars": 333,
+        "arabic_yeh_kaf": 0,
+        "zwnj": 6,
+        "preamble": false,
+        "think_tag": false,
+        "expected_lang": "fa",
+        "fa_ratio": 1.0,
+        "latin_ratio": 0.0,
+        "script_ok": true,
+        "latency_s": 1.044,
+        "tokens_out": 109
+      },
+      {
+        "id": "s_fa_sleep",
+        "status": 200,
+        "chars": 322,
+        "arabic_yeh_kaf": 0,
+        "zwnj": 5,
+        "preamble": false,
+        "think_tag": false,
+        "expected_lang": "fa",
+        "fa_ratio": 1.0,
+        "latin_ratio": 0.0,
+        "script_ok": true,
+        "latency_s": 0.718,
+        "tokens_out": 102
+      },
+      {
+        "id": "c_fa_mood",
+        "status": 200,
+        "chars": 63,
+        "arabic_yeh_kaf": 0,
+        "zwnj": 2,
+        "preamble": false,
+        "think_tag": false,
+        "expected_lang": "fa",
+        "fa_ratio": 1.0,
+        "latin_ratio": 0.0,
+        "script_ok": true,
+        "latency_s": 0.796,
+        "tokens_out": 27
+      },
+      {
+        "id": "c_fa_joke",
+        "status": 200,
+        "chars": 158,
+        "arabic_yeh_kaf": 0,
+        "zwnj": 4,
+        "preamble": false,
+        "think_tag": false,
+        "expected_lang": "fa",
+        "fa_ratio": 1.0,
+        "latin_ratio": 0.0,
+        "script_ok": true,
+        "latency_s": 0.925,
+        "tokens_out": 74
+      }
+    ],
+    "p4": [
+      {
+        "id": "k1",
+        "expected": 372,
+        "status": 200,
+        "tool_called": true,
+        "expression": "0.15*2480",
+        "correct": true,
+        "value": 372.0
+      },
+      {
+        "id": "k2",
+        "expected": 88,
+        "status": 200,
+        "tool_called": true,
+        "expression": "25*4-12",
+        "correct": true,
+        "value": 88.0
+      },
+      {
+        "id": "k3",
+        "expected": 72,
+        "status": 200,
+        "tool_called": true,
+        "expression": "180/2.5",
+        "correct": true,
+        "value": 72.0
+      },
+      {
+        "id": "k4",
+        "expected": 21,
+        "status": 200,
+        "tool_called": true,
+        "expression": "sqrt(144) + 3**2",
+        "correct": true,
+        "value": 21.0
+      },
+      {
+        "id": "k5",
+        "expected": 8,
+        "status": 200,
+        "tool_called": true,
+        "expression": "(3+4)*2**3 / 7",
+        "correct": true,
+        "value": 8.0
+      }
+    ]
+  }
+}
