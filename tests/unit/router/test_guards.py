@@ -105,6 +105,23 @@ def test_g2_keeps_finglish_persian(registry: SkillRegistry) -> None:
     assert decision.response_language == "fa" and firings == []
 
 
+@pytest.mark.parametrize(
+    ("text", "lang"),
+    [
+        ("What causes the seasons on Earth? Please answer in Persian.", "fa"),
+        ("Explain inflation and reply to me in Persian", "fa"),
+        ("به انگلیسی جواب بده: هوش مصنوعی چیست؟", "en"),
+        ("هوش مصنوعی چیست؟ به انگلیسی پاسخ بده", "en"),
+    ],
+)
+def test_g2_respects_an_explicit_reply_language(
+    registry: SkillRegistry, text: str, lang: str
+) -> None:
+    """Dev D25: "answer in Persian" under an English instruction stays `fa`."""
+    decision, firings = _guard(registry, text, _decision(registry, lang, "general_chat"))
+    assert decision.response_language == lang and firings == []
+
+
 def test_g2_leaves_other_languages_alone(registry: SkillRegistry) -> None:
     decision, firings = _guard(registry, "سلام خوبی؟", _decision(registry, "de", "general_chat"))
     assert decision.response_language == "de" and firings == []
