@@ -5,13 +5,9 @@ import dataclasses
 import pytest
 from pydantic import ValidationError
 
-from skillagent.config import Settings
-from skillagent.core.types import SkillInput
-from skillagent.prompts import PromptLoader
-from skillagent.skills.base import SkillBudget, SkillContext
+from skillagent.skills.base import SkillBudget
 from skillagent.skills.catalog import build_default_registry
 from skillagent.skills.params import SummarizerParams, TranslatorParams
-from skillagent.testing import FakeLLM
 
 # Fixed by CONTRACTS §2 (owners may refine text, never these fields).
 EXPECTED = {
@@ -44,14 +40,8 @@ def test_cards_are_bilingual(name: str) -> None:
         assert "ي" not in cue and "ك" not in cue  # Persian letters, not Arabic
 
 
-# calculator is implemented (WP2) and covered by tests/unit/calculator.
-@pytest.mark.parametrize("name", [n for n in EXPECTED if n != "calculator"])
-async def test_stub_runner(name: str) -> None:
-    spec = build_default_registry().get(name)
-    ctx = SkillContext(llm=FakeLLM([]), settings=Settings(), prompts=PromptLoader())
-    out = await spec.run(SkillInput(text="x", instruction="do it", response_language="en"), ctx)
-    assert out.status == "ok"
-    assert out.output == f"[stub:{name}] do it"
+# All four skills are implemented: calculator (WP2) is covered by tests/unit/calculator,
+# summarizer/translator/general_chat (WP3) by tests/unit/skills.
 
 
 def test_spec_is_frozen() -> None:
