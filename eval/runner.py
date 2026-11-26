@@ -438,6 +438,7 @@ class PriorCase:
     run: AgentRun
     usage: UsageTotals
     code_commit: str | None
+    temperatures: dict[str, float] = field(default_factory=dict)
 
 
 def load_resume(
@@ -468,6 +469,7 @@ def load_resume(
             run=AgentRun.model_validate(record["agent_run"]),
             usage=UsageTotals.model_validate(record.get("llm_usage") or {}),
             code_commit=record.get("code_commit"),
+            temperatures={k: float(v) for k, v in (record.get("temperatures") or {}).items()},
         )
     return prior
 
@@ -483,6 +485,7 @@ class EvalOutcome:
     stop_reason: str | None = None
     resumed: int = 0
     resumed_usage: UsageTotals = field(default_factory=UsageTotals)
+    temperatures: dict[str, float] = field(default_factory=dict)
 
 
 def _jsonl_line(
@@ -497,6 +500,7 @@ def _jsonl_line(
     *,
     code_commit: str | None = None,
     resumed_from: str | None = None,
+    temperatures: Mapping[str, float] | None = None,
 ) -> str:
     record = {
         "set": set_name,
@@ -507,6 +511,7 @@ def _jsonl_line(
         "resumed_from": resumed_from,
         "aborted": aborted,
         "llm_usage": usage.model_dump(),
+        "temperatures": dict(temperatures or {}),
         "score": score.model_dump(mode="json") if score else None,
         "agent_run": run.model_dump(mode="json"),
     }
@@ -558,6 +563,7 @@ async def run_eval(
     stop_reason: str | None = None
     resumed = 0
     resumed_usage = UsageTotals()
+    temperatures: dict[str, float] = {}
     for run_index in range(1, runs + 1):
         run_scores: list[CaseScore] = []
         for i, case in enumerate(cases, 1):
@@ -580,7 +586,10 @@ async def run_eval(
                     None,
                     code_commit=earlier.code_commit,
                     resumed_from=resumed_from,
+                    temperatures=earlier.temperatures,
                 )
+                for purpose, temp in earlier.temperatures.items():
+                    temperatures.setdefault(purpose, temp)
                 raw.write(line + "\n")
                 _progress(score, i, len(cases), run_index, out, resumed=True)
                 continue
@@ -595,6 +604,9 @@ async def run_eval(
             run = await run_agent(prompts[case.id], settings=settings, llm=llm, registry=registry)
             elapsed = time.perf_counter() - started
             usage = llm.totals(mark)
+            case_temps = observed_temperatures(llm.records[mark:])
+            for purpose, temp in case_temps.items():
+                temperatures.setdefault(purpose, temp)
             exhausted = quota_exhaustion(run)
             if exhausted:
                 stop_reason = (
@@ -611,6 +623,7 @@ async def run_eval(
                     set_name,
                     exhausted,
                     code_commit=code_commit,
+                    temperatures=case_temps,
                 )
                 raw.write(line + "\n")
                 raw.flush()
@@ -620,7 +633,16 @@ async def run_eval(
             run_scores.append(score)
             agent_runs.append(run)
             line = _jsonl_line(
-                case, run_index, sha, run, score, usage, set_name, None, code_commit=code_commit
+                case,
+                run_index,
+                sha,
+                run,
+                score,
+                usage,
+                set_name,
+                None,
+                code_commit=code_commit,
+                temperatures=case_temps,
             )
             raw.write(line + "\n")
             raw.flush()
@@ -646,7 +668,9 @@ async def run_eval(
         scores.extend(run_scores)
         if stop_reason:
             break
-    return EvalOutcome(summaries, scores, agent_runs, stop_reason, resumed, resumed_usage)
+    return EvalOutcome(
+        summaries, scores, agent_runs, stop_reason, resumed, resumed_usage, temperatures
+    )
 
 
 def _add_usage(a: UsageTotals, b: UsageTotals) -> UsageTotals:
@@ -826,7 +850,7 @@ def main(
         provider=provider,
         model=model,
         models_observed=_models(metered, outcome.agent_runs),
-        temperatures=observed_temperatures(metered.records),
+        temperatures=outcome.temperatures,
         settings_limits=settings_limits(settings),
         prompt_pins=dict(settings.prompt_versions),
         prompts=prompt_infos(loader, registry, outcome.agent_runs),

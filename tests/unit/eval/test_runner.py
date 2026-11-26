@@ -323,8 +323,10 @@ def test_resume_reuses_scored_cases_and_reruns_aborted_ones(tmp_path: Path) -> N
     assert [row["case_id"] for row in lines] == ["D01", "D07", "D09"]
     assert lines[0]["resumed_from"] == raw.as_posix()
     assert lines[1]["resumed_from"] is None and lines[1]["code_commit"]
+    assert lines[0]["temperatures"] == {"router": 0.0, "skill:summarizer": 0.3}
     text = next(second_dir.glob("*.md")).read_text(encoding="utf-8")
     assert "| Resumed | 1 case-runs re-scored from" in text
+    assert "skill:summarizer 0.3" in text  # resumed D01's temperatures are reported too
     assert "routing-correct 3/3" in out
 
 

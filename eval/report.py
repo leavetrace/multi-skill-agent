@@ -139,7 +139,7 @@ def _header(meta: ReportMeta, summaries: Sequence[RunSummary], agg: Aggregate) -
         f"{meta.dataset_cases} cases) |",
         f"| Runs | {meta.runs_requested} requested · {complete} complete · {partial} partial |",
         f"| Provider / model | {meta.provider} / `{meta.model}` (observed: {observed}) |",
-        f"| Temperature (observed per call purpose) | {temps or 'n/a'} |",
+        f"| Temperature (observed per call purpose, all scored cases) | {temps or 'n/a'} |",
         f"| Settings limits | {limits} |",
         f"| Prompt pins | {pins} |",
         f"| Prompts (version, template sha; observed shas) | {'<br>'.join(prompts)} |",
