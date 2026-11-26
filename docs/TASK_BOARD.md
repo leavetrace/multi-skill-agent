@@ -1,7 +1,7 @@
 # TASK BOARD
 
 > Updated by the Chief Architect after every agent report. Agents do **not** edit this file; they report in `docs/handoffs/WPx_report.md`.
-> Last update: 2026-11-25 15:10 — WP1 + WP2 merged (852 tests, Linux; Windows run pending on the new computer). Project moved to the owner's own computer.
+> Last update: 2026-11-26 07:25 — architect resumed on the owner's computer. `main` verified on Windows: 852 tests passed, ruff check and format clean (uv 0.13.10). Next: WP3, WP4, WP6a in parallel; WP0 when `.env` keys exist.
 
 ## Status legend
 ⬜ not started · 🟦 prompt ready · 🟨 in progress · 🟪 in review (architect) · ✅ accepted/merged · ⛔ blocked
@@ -31,7 +31,8 @@
 Critical path: WP1 → WP4 → WP5 → WP6b → WP7.
 
 ## Owner action items
-- [ ] On the new computer: start the architect session (`agent_prompts/ARCHITECT_RESUME.md`).
+- [x] On the new computer: start the architect session (`agent_prompts/ARCHITECT_RESUME.md`); install uv.
+- [ ] Launch WP3, WP4, WP6a (three PowerShell windows, Mode A).
 - [ ] Create free API keys (Google AI Studio, Groq) → root `.env` (never in chat) → enables WP0.
 - [ ] Later (before first push): GitHub account + git name/email → architect gives history-rewrite commands (ADR-019).
 

@@ -121,7 +121,7 @@ GitHub repo `multi-skill-agent`; Python package `skillagent`; CLI `python -m ski
 **Status:** Accepted
 - WP2 accepted and merged. The architect reproduced 852 tests after the merge (Linux), ruff is clean, and the `eval`/`exec`/`sympify` grep is empty.
 - Spot checks: exact `0.1+0.2 = 3/10`; `9**9**9`, `__import__`, `().__class__` rejected in < 0.1 ms; Persian «۲۵ درصد از ۸۴۰» → `۲۱۰` with 0 LLM calls.
-- **Windows run pending:** the first `uv run pytest -q` on the owner's machine must pass.
+- **Windows run:** done 2026-11-26 on the owner's computer: 852 passed, ruff check and format clean.
 - Answers to WP2's questions:
   1. **Yes.** WP4's fast path reuses `skillagent.skills.calculator.normalize.strip_cues` + `looks_like_expression`, so there is one definition of "pure expression" instead of two diverging regexes. The WP4 prompt is updated.
   2. The `<task>` + `<request>`/`<previous_result>` message shape is accepted.

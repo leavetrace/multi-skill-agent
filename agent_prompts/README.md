@@ -7,7 +7,7 @@ Each `WP*.md` file is a self-contained task for a separate Claude Code session. 
 - **Mode B:** a cloud session that can only copy files. Before launching it, run `git bundle create .worktrees/main.bundle main` in the project root. When it finishes, import its work with `git fetch .worktrees/<wp>.bundle <branch>:<branch>`.
 
 ## Launch procedure (owner)
-1. Open a terminal in the project root: `cd "C:\Users\ai\Desktop\multi-skill AI agent"`
+1. Open a terminal in the project root: `cd "C:\Users\<user>\Desktop\multi-skill AI agent"` (run this line on its own, in a normal non-admin PowerShell)
 2. Start Claude Code: `claude`
 3. Send exactly: `Read agent_prompts/<FILE>.md and execute it fully. Follow CLAUDE.md.`
 4. When it finishes, tell the architect session "WPx done". The architect reads `.worktrees/<wp>/docs/handoffs/WPx_report.md` directly, or you can paste the report.

@@ -1,6 +1,6 @@
 # ARCHITECTURE — Multi-Skill AI Agent
 
-> **Status: v1.0 — ACCEPTED by owner 2026-11-25.** Interfaces frozen in `docs/CONTRACTS.md` v1.1 (normative; wins over §3 below if they ever differ).
+> **Status: v1.0 — ACCEPTED by owner 2026-11-25.** Interfaces frozen in `docs/CONTRACTS.md` (currently v1.3; normative; wins over §3 below if they ever differ).
 > Owner: Chief Architect (coordinator session). Single source of truth for design.
 > Any agent that finds a conflict between its task prompt and this file must stop and report it, not resolve it silently.
 
@@ -90,7 +90,7 @@ So the scalability story rests on **six code-enforced mechanisms**, not on promp
 
 ## 3. Core contracts (summary)
 
-> Summary only — the normative, complete version is **`docs/CONTRACTS.md` v1.0** (adds `SkillOutput`, `StepTask`, `TraceEvent`, param models, IO `accepts` sets, LLM gateway protocol, settings, public `run_agent` API). Package name is `skillagent`.
+> Summary only — the normative, complete version is **`docs/CONTRACTS.md`** (adds `SkillOutput`, `StepTask`, `TraceEvent`, param models, IO `accepts` sets, LLM gateway protocol, settings, public `run_agent` API). Package name is `skillagent`.
 
 | Contract | Purpose | CONTRACTS § |
 |---|---|---|
