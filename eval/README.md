@@ -1,8 +1,9 @@
 # Evaluation datasets
 
 Two hand-written datasets measure how well the router picks skills and builds plans, and how
-well the final answers hold up (language, script, injections). The runner (WP6b) will read
-them through `eval/schema.py`.
+well the final answers hold up (language, script, injections). The runner (WP6b) reads them
+through `eval/schema.py`, runs each case through `skillagent.api.run_agent` and writes a
+markdown report.
 
 | File | Cases | Purpose |
 |---|---|---|
@@ -10,6 +11,11 @@ them through `eval/schema.py`.
 | `dev_set.yaml` | 40 (`D01`–`D40`) | Prompt iteration. Broader and harder; tune against this set only. |
 | `texts/*.md` | 13 | Original source paragraphs referenced as `{{text:<name>}}`. `test_*` files belong to the test set and `dev_*` files to the dev set. |
 | `schema.py` | | Pydantic models, `load_cases(path)`, `render_prompt`, `overlap_errors`. |
+| `runner.py` | | CLI: `python -m eval.runner` (below). |
+| `metrics.py` | | Pure case scoring and run aggregation (no I/O, no LLM). |
+| `checks.py` | | The five output checks on the final response. |
+| `report.py` | | Markdown report writer. |
+| `reports/` | | Committed markdown reports; `reports/raw/` holds the JSONL logs (git-ignored). |
 
 ## Split discipline
 - **`test_set.yaml` is frozen at commit `926a680`** (`926a680f3f07bbf47a95f93d39c8a74b0e5e5fdc`).
@@ -104,3 +110,43 @@ from eval.schema import load_cases, render_prompt
 cases = load_cases("eval/test_set.yaml")
 prompt = render_prompt(cases[0], "eval/texts")
 ```
+
+## Runner
+Run from the repository root (`.env` holds the provider key):
+```
+uv run python -m eval.runner --set dev --dry-run                  # rendered prompts, 0 calls
+uv run python -m eval.runner --set dev --runs 1 --label v1-baseline
+uv run python -m eval.runner --set dev --cases D10,D16 --label d10-d16
+uv run python -m eval.runner --set dev --prompt-versions router=2 --runs 3 --max-calls 400 --label v2
+uv run python -m eval.runner --set test --i-know-this-is-the-test-set --runs 3 --max-calls 200 --label v2
+```
+| Option | Meaning |
+|---|---|
+| `--set dev\|test` | Dataset. `test` also needs `--i-know-this-is-the-test-set` (even for `--dry-run`). |
+| `--runs N` | Repetitions (default 1). Means and min–max are over complete runs only. |
+| `--cases D01,D05` | Subset. |
+| `--prompt-versions router=1,translator=1` | Prompt pins, passed to `Settings.prompt_versions`. |
+| `--throttle-s S` | Fixed pause between cases. Default: auto, sized from the tokens each case used so the average stays under 7 000 tokens/min and 900 output tokens/min (Groq free tier, ADR-026), at least 2 s. |
+| `--max-calls N` | Stop (partial) before a case could push the run past N LLM calls (default 130; 4 calls are reserved per case). |
+| `--label NAME` | Report file label. |
+| `--resume RAW.jsonl` | Finish a stopped run: cases already scored in that raw log are re-scored from their logged `AgentRun` (no call), the rest run live. Refuses a log from another set or with a changed rendered prompt. |
+| `--out-dir DIR` | Default `eval/reports`. |
+
+Output: `eval/reports/<set>_<YYYYMMDD-HHMM>_<label>.md` and `eval/reports/raw/<same>.jsonl`
+(one line per case per run: case id, run, rendered-prompt sha, LLM usage, the score and the
+full `AgentRun`). Exit codes: 0 complete, 2 usage/config error, 3 stopped early.
+
+Behaviour:
+- One gateway per invocation, cases strictly sequential.
+- An `LLMRateLimitError` anywhere in a case's trace (router fallback, skill error, agent
+  error) stops the run at once. That case is logged but not scored, the report is written
+  for the cases completed and marked partial, and nothing is retried (ADR-021).
+  The report prints the `--resume` command to finish the run once the quota is back.
+  Groq's free tier also caps **200 000 tokens per day** (measured from a 429, 2026-11-26);
+  one dev case costs ~3.5K tokens, so a full 40-case dev run (~140K) may need two sessions.
+- Provider account ids are replaced by `org_<redacted>` (as in WP0) in reports, raw JSONL
+  logs and log output.
+- Scoring rules are in the `eval/metrics.py` docstring. The headline "skill-detection
+  accuracy" is **routing-correct**: ordered skill set + structure (multi-step cases) +
+  response language, or a full `also_ok` match. Params, dropped intents, calculator values,
+  output checks and skill clean-up flags (`meta.postprocess`) are reported separately.
