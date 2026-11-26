@@ -85,6 +85,15 @@ class Expectation(BaseModel):
     dropped: int | None = Field(default=None, ge=1)
     calc_values: list[str] = Field(default_factory=list)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _clarify_has_no_skills(cls, data: Any) -> Any:
+        # A clarification never runs skills, so `skills: []` is implied and need not be
+        # written in the YAML; the runner can then compare skill lists uniformly.
+        if isinstance(data, dict) and data.get("outcome") == "clarify":
+            data = {"skills": [], **data}
+        return data
+
     @field_validator("skills")
     @classmethod
     def _known_skills(cls, skills: list[str] | None) -> list[str] | None:
