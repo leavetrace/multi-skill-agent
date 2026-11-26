@@ -28,6 +28,7 @@ from skillagent.skills._text import (
     UiLang,
     build_messages,
     language_name,
+    localized,
     payload_message,
     postprocess,
     prompt_meta,
@@ -112,7 +113,9 @@ def choose_policy(word_count: int, params: SummarizerParams) -> tuple[Length, Fo
 
 def _rejected(key: str, lang: UiLang, meta: dict[str, Any], **fmt: Any) -> SkillOutput:
     return SkillOutput(
-        status="rejected", output=_MESSAGES[key][lang].format(**fmt), meta=meta | {"reason": key}
+        status="rejected",
+        output=localized(_MESSAGES[key][lang], lang, **fmt),
+        meta=meta | {"reason": key},
     )
 
 
@@ -161,7 +164,7 @@ async def run(inp: SkillInput, ctx: SkillContext) -> SkillOutput:
     )
     if truncated_input:
         percent = round(100 * len(content) / len(payload.text))
-        text = f"{text}\n\n{_PARTIAL_NOTE[lang].format(percent=percent)}"
+        text = f"{text}\n\n{localized(_PARTIAL_NOTE[lang], lang, percent=percent)}"
     truncated_output = was_truncated(response)
     if truncated_output:
         text = f"{text}\n\n{truncation_note(lang)}"

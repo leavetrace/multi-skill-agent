@@ -21,6 +21,7 @@ __all__ = [
     "build_messages",
     "escape_delimiters",
     "language_name",
+    "localized",
     "localized_language_name",
     "payload_message",
     "persianize_digits",
@@ -241,6 +242,12 @@ _TRUNCATED = {
     "en": "[Note: the output was cut off at the length limit and may be incomplete.]",
     "fa": "[توجه: خروجی به سقف طول رسید و قطع شد؛ ممکن است کامل نباشد.]",
 }
+
+
+def localized(template: str, lang: UiLang, **values: object) -> str:
+    """Fill one of our fixed messages; Persian messages show Persian digits."""
+    text = template.format(**values)
+    return persianize_digits(text) if lang == "fa" else text
 
 
 def truncation_note(lang: UiLang) -> str:

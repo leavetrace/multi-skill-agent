@@ -17,6 +17,7 @@ from skillagent.skills._text import (
     UiLang,
     build_messages,
     language_name,
+    localized,
     localized_language_name,
     payload_message,
     postprocess,
@@ -151,7 +152,9 @@ def detect_source(content: str) -> str | None:
 
 def _rejected(key: str, lang: UiLang, meta: dict[str, Any], **fmt: Any) -> SkillOutput:
     return SkillOutput(
-        status="rejected", output=_MESSAGES[key][lang].format(**fmt), meta=meta | {"reason": key}
+        status="rejected",
+        output=localized(_MESSAGES[key][lang], lang, **fmt),
+        meta=meta | {"reason": key},
     )
 
 

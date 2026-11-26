@@ -17,6 +17,7 @@ from skillagent.skills._text import (
     build_messages,
     escape_delimiters,
     language_name,
+    localized,
     postprocess,
     prompt_meta,
     require_text,
@@ -69,7 +70,7 @@ async def run(inp: SkillInput, ctx: SkillContext) -> SkillOutput:
     if tokens > BUDGET.max_input_tokens:
         return SkillOutput(
             status="rejected",
-            output=_TOO_LONG[lang].format(tokens=tokens, limit=BUDGET.max_input_tokens),
+            output=localized(_TOO_LONG[lang], lang, tokens=tokens, limit=BUDGET.max_input_tokens),
             meta=meta | {"reason": "too_long"},
         )
 
