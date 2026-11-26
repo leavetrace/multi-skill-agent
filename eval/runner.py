@@ -10,6 +10,8 @@ Free-tier rules this runner enforces (ADR-021, ADR-026, CLAUDE.md §8):
 - an `LLMRateLimitError` in a trace stops the run: the report is written for the cases
   completed and marked partial. The runner never sleeps through a daily quota.
 - `--set test` refuses to run without `--i-know-this-is-the-test-set` (ADR-011, ADR-023).
+- `--resume <raw.jsonl>` finishes a stopped run later: cases already scored there are
+  re-scored from their logged `AgentRun` (scoring is pure) instead of being paid for twice.
 
 Exit codes: 0 complete · 2 usage/config error · 3 stopped early (partial report written).
 """
@@ -25,7 +27,7 @@ import subprocess
 import sys
 import time
 from collections import Counter
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -53,7 +55,9 @@ __all__ = [
     "DATASETS",
     "MeteredLLM",
     "Pacer",
+    "PriorCase",
     "RunnerOptions",
+    "load_resume",
     "main",
     "parse_args",
     "quota_exhaustion",
@@ -228,8 +232,16 @@ def quota_exhaustion(run: AgentRun) -> str | None:
         if "LLMRateLimitError" in error:
             detail = str(event.data.get("detail") or "")
             text = f"{event.node} {event.event}: {error}" + (f": {detail}" if detail else "")
-            return text[:300]
+            return redact_ids(text)[:300]
     return None
+
+
+_ACCOUNT_ID = re.compile(r"\borg_[A-Za-z0-9]+")
+
+
+def redact_ids(text: str) -> str:
+    """Provider messages name the account (`org_…`); reports are committed, so drop it."""
+    return _ACCOUNT_ID.sub("org_…", text)
 
 
 # --- options -----------------------------------------------------------------------------
@@ -247,6 +259,7 @@ class RunnerOptions:
     out_dir: Path = EVAL_DIR / "reports"
     max_calls: int = DEFAULT_MAX_CALLS
     allow_test_set: bool = False
+    resume: Path | None = None
 
 
 def parse_args(argv: Sequence[str] | None = None) -> RunnerOptions:
@@ -279,6 +292,12 @@ def parse_args(argv: Sequence[str] | None = None) -> RunnerOptions:
         f"(default {DEFAULT_MAX_CALLS})",
     )
     parser.add_argument(
+        "--resume",
+        type=Path,
+        default=None,
+        help="raw JSONL of an earlier (stopped) run: its scored cases are reused, not re-run",
+    )
+    parser.add_argument(
         TEST_SET_FLAG,
         dest="allow_test_set",
         action="store_true",
@@ -301,6 +320,7 @@ def parse_args(argv: Sequence[str] | None = None) -> RunnerOptions:
         out_dir=args.out_dir,
         max_calls=args.max_calls,
         allow_test_set=args.allow_test_set,
+        resume=args.resume,
     )
 
 
@@ -400,6 +420,48 @@ def observed_temperatures(records: Sequence[CallRecord]) -> dict[str, float]:
     return temps
 
 
+# --- resume ------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PriorCase:
+    run: AgentRun
+    usage: UsageTotals
+    code_commit: str | None
+
+
+def load_resume(
+    path: Path, set_name: str, prompt_shas: Mapping[str, str]
+) -> dict[tuple[str, int], PriorCase]:
+    """Scored cases of an earlier raw log, keyed by (case id, run index).
+
+    Aborted (quota) lines are skipped so they run again. A line from another set, an
+    unselected case or a different rendered prompt is an error: mixing them would report
+    numbers for prompts that were never sent.
+    """
+    prior: dict[tuple[str, int], PriorCase] = {}
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        if record.get("score") is None or record.get("aborted"):
+            continue
+        where = f"{path.name} line {number}"
+        if record.get("set") != set_name:
+            raise ValueError(f"{where}: set {record.get('set')!r}, not {set_name!r}")
+        case_id = record["case_id"]
+        if case_id not in prompt_shas:
+            raise ValueError(f"{where}: case {case_id} is not selected in this invocation")
+        if record.get("prompt_sha") != prompt_shas[case_id]:
+            raise ValueError(f"{where}: {case_id} prompt changed since that run (sha differs)")
+        prior[(case_id, int(record["run"]))] = PriorCase(
+            run=AgentRun.model_validate(record["agent_run"]),
+            usage=UsageTotals.model_validate(record.get("llm_usage") or {}),
+            code_commit=record.get("code_commit"),
+        )
+    return prior
+
+
 # --- running -----------------------------------------------------------------------------
 
 
@@ -409,6 +471,8 @@ class EvalOutcome:
     scores: list[CaseScore]
     agent_runs: list[AgentRun]
     stop_reason: str | None = None
+    resumed: int = 0
+    resumed_usage: UsageTotals = field(default_factory=UsageTotals)
 
 
 def _jsonl_line(
@@ -420,12 +484,17 @@ def _jsonl_line(
     usage: UsageTotals,
     set_name: str,
     aborted: str | None,
+    *,
+    code_commit: str | None = None,
+    resumed_from: str | None = None,
 ) -> str:
     record = {
         "set": set_name,
         "case_id": case.id,
         "run": run_index,
         "prompt_sha": sha,
+        "code_commit": code_commit,
+        "resumed_from": resumed_from,
         "aborted": aborted,
         "llm_usage": usage.model_dump(),
         "score": score.model_dump(mode="json") if score else None,
@@ -434,10 +503,13 @@ def _jsonl_line(
     return json.dumps(record, ensure_ascii=False)
 
 
-def _progress(score: CaseScore, i: int, n: int, run_index: int, out: TextIO) -> None:
+def _progress(
+    score: CaseScore, i: int, n: int, run_index: int, out: TextIO, *, resumed: bool = False
+) -> None:
     mark = "✓" if score.routing_correct else "✗"
+    tag = " (resumed)" if resumed else ""
     line = (
-        f"[run {run_index} {i}/{n}] {score.case_id} {mark} {score.got} "
+        f"[run {run_index} {i}/{n}] {score.case_id}{tag} {mark} {score.got} "
         f"(want {score.expected}) calls={score.llm_calls} {score.total_ms / 1000:.1f}s"
     )
     if score.reason:
@@ -458,17 +530,50 @@ async def run_eval(
     registry: SkillRegistry | None = None,
     sleep: Sleep = asyncio.sleep,
     out: TextIO = sys.stdout,
+    prior: Mapping[tuple[str, int], PriorCase] | None = None,
+    resumed_from: str | None = None,
+    code_commit: str | None = None,
 ) -> EvalOutcome:
-    """Sequential runs × cases. Stops (partial) on quota exhaustion or the call cap."""
+    """Sequential runs × cases. Stops (partial) on quota exhaustion or the call cap.
+
+    Cases found in `prior` (from `--resume`) are re-scored from their logged run and
+    copied into the new raw log; they make no call and cause no pause.
+    """
     registry = registry or build_default_registry()
+    prior = prior or {}
     prompts = {case.id: render_prompt(case, TEXTS_DIR) for case in cases}
     summaries: list[RunSummary] = []
     scores: list[CaseScore] = []
     agent_runs: list[AgentRun] = []
     stop_reason: str | None = None
+    resumed = 0
+    resumed_usage = UsageTotals()
     for run_index in range(1, runs + 1):
         run_scores: list[CaseScore] = []
         for i, case in enumerate(cases, 1):
+            sha = prompt_sha(prompts[case.id])
+            earlier = prior.get((case.id, run_index))
+            if earlier is not None:
+                score = score_case(case, earlier.run, run_index)
+                run_scores.append(score)
+                agent_runs.append(earlier.run)
+                resumed += 1
+                resumed_usage = _add_usage(resumed_usage, earlier.usage)
+                line = _jsonl_line(
+                    case,
+                    run_index,
+                    sha,
+                    earlier.run,
+                    score,
+                    earlier.usage,
+                    set_name,
+                    None,
+                    code_commit=earlier.code_commit,
+                    resumed_from=resumed_from,
+                )
+                raw.write(line + "\n")
+                _progress(score, i, len(cases), run_index, out, resumed=True)
+                continue
             if llm.calls + CALL_RESERVE > max_calls:
                 stop_reason = (
                     f"call budget: {llm.calls} LLM calls made; the next case could exceed "
@@ -480,27 +585,43 @@ async def run_eval(
             run = await run_agent(prompts[case.id], settings=settings, llm=llm, registry=registry)
             elapsed = time.perf_counter() - started
             usage = llm.totals(mark)
-            sha = prompt_sha(prompts[case.id])
             exhausted = quota_exhaustion(run)
             if exhausted:
                 stop_reason = (
                     f"quota/rate limit at {case.id} (run {run_index}): {exhausted}. "
                     "That case is not scored; no retry was attempted."
                 )
-                raw.write(
-                    _jsonl_line(case, run_index, sha, run, None, usage, set_name, exhausted) + "\n"
+                line = _jsonl_line(
+                    case,
+                    run_index,
+                    sha,
+                    run,
+                    None,
+                    usage,
+                    set_name,
+                    exhausted,
+                    code_commit=code_commit,
                 )
+                raw.write(line + "\n")
                 raw.flush()
                 print(f"STOP: {stop_reason}", file=out, flush=True)
                 break
             score = score_case(case, run, run_index)
             run_scores.append(score)
             agent_runs.append(run)
-            raw.write(_jsonl_line(case, run_index, sha, run, score, usage, set_name, None) + "\n")
+            line = _jsonl_line(
+                case, run_index, sha, run, score, usage, set_name, None, code_commit=code_commit
+            )
+            raw.write(line + "\n")
             raw.flush()
             _progress(score, i, len(cases), run_index, out)
-            last = run_index == runs and i == len(cases)
-            if not last:
+            remaining = [
+                (c.id, r)
+                for r in range(run_index, runs + 1)
+                for c in (cases[i:] if r == run_index else cases)
+                if (c.id, r) not in prior
+            ]
+            if remaining:
                 pause = pacer.pause_after(usage, elapsed)
                 if pause > 0:
                     await sleep(pause)
@@ -515,7 +636,13 @@ async def run_eval(
         scores.extend(run_scores)
         if stop_reason:
             break
-    return EvalOutcome(summaries, scores, agent_runs, stop_reason)
+    return EvalOutcome(summaries, scores, agent_runs, stop_reason, resumed, resumed_usage)
+
+
+def _add_usage(a: UsageTotals, b: UsageTotals) -> UsageTotals:
+    return UsageTotals(
+        **{name: getattr(a, name) + getattr(b, name) for name in UsageTotals.model_fields}
+    )
 
 
 def _default_llm(settings: Settings) -> LLMClient:
@@ -530,6 +657,8 @@ async def _run_live(
     raw_path: Path,
     sleep: Sleep,
     out: TextIO,
+    prior: Mapping[tuple[str, int], PriorCase],
+    code_commit: str | None,
 ) -> tuple[EvalOutcome, MeteredLLM]:
     inner = llm_factory(settings)  # inside asyncio.run: one gateway per event loop
     metered = MeteredLLM(inner)
@@ -547,6 +676,9 @@ async def _run_live(
                 max_calls=opts.max_calls,
                 sleep=sleep,
                 out=out,
+                prior=prior,
+                resumed_from=_display_path(opts.resume) if opts.resume else None,
+                code_commit=code_commit,
             )
     finally:
         close = getattr(inner, "aclose", None)
@@ -623,7 +755,11 @@ def main(
         loader = PromptLoader(pinned=settings.prompt_versions)
         for name in settings.prompt_versions:
             loader.load(name)  # fail now on a bad pin, not in the middle of the run
-    except (ValidationError, ValueError, FileNotFoundError) as exc:
+        prior: dict[tuple[str, int], PriorCase] = {}
+        if opts.resume is not None:
+            shas = {c.id: prompt_sha(render_prompt(c, TEXTS_DIR)) for c in cases}
+            prior = load_resume(opts.resume, opts.set_name, shas)
+    except (ValidationError, ValueError, FileNotFoundError, KeyError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_USAGE
     registry = build_default_registry()
@@ -635,10 +771,23 @@ def main(
     started = now()
     stem = f"{opts.set_name}_{started:%Y%m%d-%H%M}_{opts.label}"
     raw_path = opts.out_dir / "raw" / f"{stem}.jsonl"
+    if opts.resume is not None and raw_path.resolve() == opts.resume.resolve():
+        raw_path = raw_path.with_name(f"{stem}_resumed.jsonl")
     clock = time.perf_counter()
+    commit, dirty = git_state()
     try:
         outcome, metered = asyncio.run(
-            _run_live(cases, opts, settings, llm_factory or _default_llm, raw_path, sleep, out)
+            _run_live(
+                cases,
+                opts,
+                settings,
+                llm_factory or _default_llm,
+                raw_path,
+                sleep,
+                out,
+                prior,
+                commit,
+            )
         )
     except ConfigError as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -649,7 +798,11 @@ def main(
         provider, model = profile.name, settings.llm_model or profile.default_model
     except ConfigError:
         provider, model = settings.llm_provider, settings.llm_model or "unknown"
-    commit, dirty = git_state()
+    stop_reason = outcome.stop_reason
+    if stop_reason:
+        stop_reason += (
+            f" Finish later with the same options plus `--resume {_display_path(raw_path)}`."
+        )
     meta = ReportMeta(
         title_label=opts.label,
         set_name=opts.set_name,
@@ -662,7 +815,7 @@ def main(
         runs_requested=opts.runs,
         provider=provider,
         model=model,
-        models_observed=sorted({r.model for r in metered.records if r.model}),
+        models_observed=_models(metered, outcome.agent_runs),
         temperatures=observed_temperatures(metered.records),
         settings_limits=settings_limits(settings),
         prompt_pins=dict(settings.prompt_versions),
@@ -671,7 +824,13 @@ def main(
         git_dirty=dirty,
         throttle=Pacer(opts.throttle_s).describe(),
         usage=metered.totals(),
-        stop_reason=outcome.stop_reason,
+        stop_reason=stop_reason,
+        resumed_from=_display_path(opts.resume) if opts.resume else None,
+        resumed_cases=outcome.resumed,
+        resumed_usage=outcome.resumed_usage if outcome.resumed else None,
+        resumed_commits=sorted(
+            {p.code_commit or "unknown" for p in prior.values()} if outcome.resumed else set()
+        ),
         raw_log=_display_path(raw_path),
     )
     text = render_report(meta, outcome.summaries, outcome.scores, cases)
@@ -690,6 +849,18 @@ def main(
             file=out,
         )
     return EXIT_PARTIAL if outcome.stop_reason else EXIT_OK
+
+
+def _models(metered: MeteredLLM, runs: Sequence[AgentRun]) -> list[str]:
+    """Models that answered: this invocation's calls plus router `llm` events of all runs."""
+    models = {r.model for r in metered.records if r.model}
+    models |= {
+        str(e.data["model"])
+        for run in runs
+        for e in run.trace
+        if e.node == "router" and e.event == "llm" and e.data.get("model")
+    }
+    return sorted(models)
 
 
 def _display_path(path: Path) -> str:

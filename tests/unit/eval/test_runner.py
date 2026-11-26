@@ -289,3 +289,53 @@ async def test_metered_llm_records_calls_repairs_and_failures() -> None:
     assert totals.calls == 3 and totals.failed == 1
     assert [r.purpose for r in metered.records] == ["router", "router:repair", "skill:x"]
     assert metered.records[0].temperature == 0.0
+
+
+# --- resume and redaction ----------------------------------------------------------------
+
+
+def test_resume_reuses_scored_cases_and_reruns_aborted_ones(tmp_path: Path) -> None:
+    first_dir = tmp_path / "first"
+    quota = FakeLLM(
+        [
+            FakeRule(match=lambda m, p: p.startswith("router"), reply=_router_reply, times=1),
+            FakeRule(match=lambda m, p: p == "skill:summarizer", reply=SUMMARY),
+            FakeRule(match=lambda m, p: True, reply=LLMRateLimitError("quota org_abc123XYZ")),
+        ]
+    )
+    code, *_ = _run_main(["--cases", "D01,D07,D09", "--label", "base"], quota, first_dir)
+    assert code == 3
+    raw = next((first_dir / "raw").glob("*.jsonl"))
+    report = next(first_dir.glob("*.md")).read_text(encoding="utf-8")
+    assert "org_abc123XYZ" not in report and "org_…" in report  # account id redacted
+    assert f"--resume {raw.as_posix()}" in report
+
+    second_dir = tmp_path / "second"
+    good = _good_llm()
+    code, out, _, _ = _run_main(
+        ["--cases", "D01,D07,D09", "--label", "base", "--resume", str(raw)], good, second_dir
+    )
+    assert code == 0, out
+    assert "D01 (resumed) ✓" in out
+    routed = [c for c in good.calls if c.purpose.startswith("router")]
+    assert len(routed) == 2  # only D07 and D09 ran; D01 came from the first log
+    lines = _jsonl(second_dir)
+    assert [row["case_id"] for row in lines] == ["D01", "D07", "D09"]
+    assert lines[0]["resumed_from"] == raw.as_posix()
+    assert lines[1]["resumed_from"] is None and lines[1]["code_commit"]
+    text = next(second_dir.glob("*.md")).read_text(encoding="utf-8")
+    assert "| Resumed | 1 case-runs re-scored from" in text
+    assert "routing-correct 3/3" in out
+
+
+def test_resume_rejects_a_changed_prompt_or_other_set(tmp_path: Path) -> None:
+    code, *_ = _run_main(["--cases", "D01", "--label", "x"], _good_llm(), tmp_path / "a")
+    assert code == 0
+    raw = next((tmp_path / "a" / "raw").glob("*.jsonl"))
+    record = json.loads(raw.read_text(encoding="utf-8"))
+    record["prompt_sha"] = "000000000000"
+    edited = tmp_path / "edited.jsonl"
+    edited.write_text(json.dumps(record) + "\n", encoding="utf-8")
+    assert _run_main(["--cases", "D01", "--resume", str(edited)], None, tmp_path / "b")[0] == 2
+    # The resumed log names D01, which is not among the selected cases.
+    assert _run_main(["--cases", "D07", "--resume", str(raw)], None, tmp_path / "c")[0] == 2

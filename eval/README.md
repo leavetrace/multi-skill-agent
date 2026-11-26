@@ -129,6 +129,7 @@ uv run python -m eval.runner --set test --i-know-this-is-the-test-set --runs 3 -
 | `--throttle-s S` | Fixed pause between cases. Default: auto, sized from the tokens each case used so the average stays under 7 000 tokens/min and 900 output tokens/min (Groq free tier, ADR-026), at least 2 s. |
 | `--max-calls N` | Stop (partial) before a case could push the run past N LLM calls (default 130; 4 calls are reserved per case). |
 | `--label NAME` | Report file label. |
+| `--resume RAW.jsonl` | Finish a stopped run: cases already scored in that raw log are re-scored from their logged `AgentRun` (no call), the rest run live. Refuses a log from another set or with a changed rendered prompt. |
 | `--out-dir DIR` | Default `eval/reports`. |
 
 Output: `eval/reports/<set>_<YYYYMMDD-HHMM>_<label>.md` and `eval/reports/raw/<same>.jsonl`
@@ -140,6 +141,10 @@ Behaviour:
 - An `LLMRateLimitError` anywhere in a case's trace (router fallback, skill error, agent
   error) stops the run at once. That case is logged but not scored, the report is written
   for the cases completed and marked partial, and nothing is retried (ADR-021).
+  The report prints the `--resume` command to finish the run once the quota is back.
+  Groq's free tier also caps **200 000 tokens per day** (measured from a 429, 2026-11-26);
+  one dev case costs ~3.5K tokens, so a full 40-case dev run (~140K) may need two sessions.
+- Provider account ids (`org_…`) are redacted from reports.
 - Scoring rules are in the `eval/metrics.py` docstring. The headline "skill-detection
   accuracy" is **routing-correct**: ordered skill set + structure (multi-step cases) +
   response language, or a full `also_ok` match. Params, dropped intents, calculator values,

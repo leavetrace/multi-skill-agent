@@ -75,6 +75,10 @@ class ReportMeta(BaseModel):
     usage: UsageTotals = Field(default_factory=UsageTotals)
     stop_reason: str | None = None
     raw_log: str = ""
+    resumed_from: str | None = None
+    resumed_cases: int = 0
+    resumed_usage: UsageTotals | None = None
+    resumed_commits: list[str] = Field(default_factory=list)
 
 
 def _pct(value: float | None) -> str:
@@ -144,10 +148,19 @@ def _header(meta: ReportMeta, summaries: Sequence[RunSummary], agg: Aggregate) -
         f"{u.failed} failed) · {u.prompt_tokens} prompt + {u.completion_tokens} completion "
         "tokens |",
         f"| Throttle | {meta.throttle} |",
-        f"| Wall clock | {meta.duration_s / 60:.1f} min |",
+        f"| Wall clock (this invocation) | {meta.duration_s / 60:.1f} min |",
         f"| Raw log | `{meta.raw_log}` (not committed) |",
-        "",
     ]
+    if meta.resumed_from:
+        r = meta.resumed_usage or UsageTotals()
+        commits = ", ".join(f"`{c}`" for c in meta.resumed_commits)
+        lines.append(
+            f"| Resumed | {meta.resumed_cases} case-runs re-scored from `{meta.resumed_from}` "
+            f"(code {commits}; their LLM usage: {r.calls} calls, {r.attempts} attempts, "
+            f"{r.prompt_tokens} + {r.completion_tokens} tokens). Live usage above covers this "
+            "invocation only. |"
+        )
+    lines.append("")
     n = len(meta.selected_cases)
     if n:
         lines.append(
