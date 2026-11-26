@@ -38,6 +38,14 @@ _DEICTIC = re.compile(
 )
 
 
+# "Please answer in Persian", «به انگلیسی جواب بده»: the user names the reply language, which
+# the prompt says overrides the instruction language, so G2 must not undo it.
+_REPLY_LANGUAGE_REQUEST = re.compile(
+    r"\b(?:answer|reply|respond|response)\w*\s+(?:me\s+|to\s+me\s+)?in\s+[A-Za-z]+"
+    r"|به\s+\S+\s+(?:جواب|پاسخ)",
+    re.IGNORECASE,
+)
+
 # «ترجمه کن», «خلاصه کنید»: a noun plus a light verb and nothing else.
 _BARE_PERSIAN_VERB = re.compile(r"\S+\s+(?:کن|کنید|بکن|بکنید|بده|بدید)")
 
@@ -118,9 +126,13 @@ def _g2_language(
 
     fa → en is only forced when the instruction is clearly English, because Finglish
     ("salam chetori") is Latin-script Persian and must stay `fa`. Clarifications are left
-    alone: their question text is already written in the model's chosen language.
+    alone: their question text is already written in the model's chosen language. An
+    explicit reply-language request ("answer in Persian") also wins over the instruction
+    language (prompt rule 7), so the model's choice is kept then.
     """
     if decision.needs_clarification:
+        return decision
+    if _REPLY_LANGUAGE_REQUEST.search(normalize_persian(request.raw_text)):
         return decision
     current = decision.response_language
     target: str | None = None

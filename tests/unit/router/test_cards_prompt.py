@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 from collections.abc import Callable
@@ -10,9 +11,16 @@ from skillagent.core.registry import SkillRegistry
 from skillagent.core.types import RoutingDecision
 from skillagent.router import Router, build_user_request
 from skillagent.router.candidates import AllSkills
-from skillagent.router.cards import render_cards, render_examples, render_params
+from skillagent.router.cards import (
+    MAX_DONT_CUES,
+    MAX_USE_CUES,
+    render_cards,
+    render_examples,
+    render_params,
+    select_cues,
+)
 from skillagent.router.examples import ROUTER_EXAMPLES
-from skillagent.skills.base import SkillSpec
+from skillagent.skills.base import RouterExample, SkillSpec
 from skillagent.skills.catalog import build_default_registry
 from skillagent.skills.params import SummarizerParams, TranslatorParams
 from skillagent.testing import make_skill_spec
@@ -29,8 +37,36 @@ def test_cards_render_every_spec_field(registry: SkillRegistry) -> None:
     for spec in registry.specs():
         assert f"### {spec.name}" in cards
         assert spec.description.strip() in cards
-        for cue in (*spec.when_to_use, *spec.when_not_to_use):
+        for cue in (
+            *select_cues(spec.when_to_use, MAX_USE_CUES),
+            *select_cues(spec.when_not_to_use, MAX_DONT_CUES),
+        ):
             assert cue.strip() in cards
+        assert (f"### {spec.name} (needs text)" in cards) == spec.requires_payload
+
+
+def test_cards_cap_cues_and_keep_both_scripts(registry: SkillRegistry) -> None:
+    """The real SPECs carry 3–5 cues per list; the card shows a capped, bilingual subset."""
+    for spec in registry.specs():
+        use = select_cues(spec.when_to_use, MAX_USE_CUES)
+        assert len(use) == min(MAX_USE_CUES, len(spec.when_to_use))
+        assert len(select_cues(spec.when_not_to_use, MAX_DONT_CUES)) <= MAX_DONT_CUES
+        has_persian = any(_persian(c) for c in spec.when_to_use)
+        assert any(_persian(c) for c in use) == has_persian
+        assert any(not _persian(c) for c in use)
+
+
+def _persian(text: str) -> bool:
+    letters = [ch for ch in text if ch.isalpha()]
+    return sum("\u0600" <= ch <= "\u06ff" for ch in letters) * 2 > len(letters)
+
+
+def test_select_cues_swaps_in_the_other_script() -> None:
+    cues = ["first cue", "second cue", "third cue", "نشانهٔ فارسی", "fifth cue"]
+    assert select_cues(cues, 3) == ["first cue", "second cue", "نشانهٔ فارسی"]
+    assert select_cues(["a cue", "b cue"], 3) == ["a cue", "b cue"]
+    assert select_cues(["فقط فارسی", "دومی", "English one"], 2) == ["فقط فارسی", "English one"]
+    assert select_cues(["only one"], 1) == ["only one"]
 
 
 def test_params_summary_lists_fields_and_allowed_values() -> None:
@@ -38,7 +74,7 @@ def test_params_summary_lists_fields_and_allowed_values() -> None:
     for token in ("length", '"short"', '"bullets"', "output_language", "ISO 639-1"):
         assert token in summary
     assert "target_language = ISO 639-1" in render_params(TranslatorParams)
-    assert render_params(None) == "none (always {})"
+    assert render_params(None) == "none"
 
 
 def test_prompt_has_no_unrendered_placeholders(make_router: Callable[..., Router]) -> None:
@@ -100,7 +136,51 @@ def test_synthetic_fifth_skill_appears_without_code_changes(
     system, _ = _system_prompt(make_router(registry))
     assert "### weather_forecast" in system
     assert "Gives the weather forecast for a city (synthetic)." in system
-    assert "weather_forecast" in system.split("## Skills", 1)[1].split("\n", 2)[1]
+    skills_line = system.split("## Skills", 1)[1].split("\n", 1)[0]
+    assert "weather_forecast" in skills_line
+
+
+def test_spec_examples_only_for_skills_without_router_examples(registry: SkillRegistry) -> None:
+    """The 4 real skills are covered by router examples, so no SPEC example is rendered;
+    a new skill (no router example names it) still shows its first SPEC example."""
+    rendered = render_examples(registry.specs(), ROUTER_EXAMPLES)
+    for spec in registry.specs():
+        for ex in spec.examples:
+            assert f"→ {ex.plan}\n" not in rendered + "\n"
+    extra = dataclasses.replace(
+        make_skill_spec("weather_forecast", order=50),
+        examples=(
+            RouterExample(prompt="Will it rain tomorrow?", plan="weather_forecast(user)"),
+            RouterExample(prompt="Second one", plan="weather_forecast(user)"),
+        ),
+    )
+    rendered = render_examples([*registry.specs(), extra], ROUTER_EXAMPLES)
+    assert "User: Will it rain tomorrow?\n→ weather_forecast(user)" in rendered
+    assert "Second one" not in rendered
+
+
+def test_examples_render_one_json_then_compact_notation(registry: SkillRegistry) -> None:
+    rendered = render_examples(registry.specs(), ROUTER_EXAMPLES)
+    assert rendered.count("JSON: ") == 1
+    assert "→ en: summarizer(user) -> " not in rendered  # the chain is the JSON example
+    assert "→ fa: translator(user, target_language=fa) + calculator(user)" in rendered
+    assert '→ CLARIFY(fa): "' in rendered and '→ CLARIFY(en): "' in rendered
+    assert rendered.count("→ ") == len(ROUTER_EXAMPLES) - 1
+
+
+def test_compact_notation_matches_the_plan() -> None:
+    chain = ROUTER_EXAMPLES[0]
+    assert chain.compact().startswith(
+        "en: summarizer(user) -> translator(s1, target_language=fa) — "
+    )
+
+
+def test_real_prompt_fits_the_groq_budget(make_router: Callable[..., Router]) -> None:
+    """WP4b: ≤ 2 500 provider tokens. The estimator under-counts this prompt (live
+    calibration: provider ≈ 1.24 × estimate), so the estimate must stay ≤ 2 000."""
+    system, info = _system_prompt(make_router())
+    assert int(info["system_tokens"]) <= 2_000
+    print(f"\nreal 4-skill router prompt: {info['system_tokens']} estimated tokens")
 
 
 def test_cards_render_synthetic_registry(synthetic_specs: list[SkillSpec]) -> None:
