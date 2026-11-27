@@ -36,7 +36,7 @@ Design documents with more detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md
 
 ### Install and configure — Windows (PowerShell)
 ```powershell
-git clone <repository-url> multi-skill-agent
+git clone https://github.com/leavetrace/multi-skill-agent.git multi-skill-agent
 cd multi-skill-agent
 uv sync                                  # creates .venv with Python 3.12 and all dependencies
 Copy-Item .env.example .env
@@ -47,7 +47,7 @@ uv run python -m skillagent doctor       # offline config check; prints the mask
 
 ### Install and configure — macOS / Linux
 ```bash
-git clone <repository-url> multi-skill-agent
+git clone https://github.com/leavetrace/multi-skill-agent.git multi-skill-agent
 cd multi-skill-agent
 uv sync
 cp .env.example .env && "${EDITOR:-nano}" .env     # set GROQ_API_KEY=gsk_...
@@ -323,7 +323,25 @@ Prompt-injection resistance (O4) is layered: router rule 9, `<text>` delimiters 
 Sources: [`docs/handoffs/WP4b_report.md`](docs/handoffs/WP4b_report.md), [`docs/handoffs/WP4b_dev_smoke.md`](docs/handoffs/WP4b_dev_smoke.md), ADR-024, ADR-027.
 
 ### 7.3 Improvement example (b): text-skill prompts v1 → v2
-<!-- WP7a-EXAMPLE -->
+**Method.** The owner (a native Persian speaker) scored the v1 text-skill outputs on Groq (`docs/handoffs/WP3_samples_groq_scores.md`). Each weakness became a targeted v2 change, written with *different* example words so the test would show whether the rule generalises rather than whether the model copies an answer. Then v1 and v2 were run on 8 samples and the owner scored them **blind** (A/B in random order, key opened afterwards): `docs/handoffs/WP7a_persian_review.md`, `WP7a_persian_review_key.md`, ADR-032.
+
+**Shipped: translator v2.** Owner's finding on v1 (sample t1, naturalness 3/5): calqued English structure, «۱۲ درصد افزایش در فروش» and «این موضوع را … بحث خواهیم کرد».
+
+v2 prompt change (excerpt from `skillagent/prompts/translator/v2.md`):
+```
+Write idiomatic Persian collocations and verbs, not English structure
+(e.g. «کاهش ۳۰ درصدی قیمت‌ها», not «۳۰ درصد کاهش در قیمت‌ها»);
+use established Persian technical terms; match the source register.
+```
+
+| | Output for "…a 12% increase in sales… We'll discuss it on Monday at 10:30." | Owner F/A/N |
+|---|---|---|
+| v1 | «… ۱۲ درصد افزایش در فروش است که عمدتاً در تهران و اصفهان رخ داده است. این موضوع را روز دوشنبه ساعت ۱۰:۳۰ **بحث خواهیم کرد**.» | 4 / 5 / 3 |
+| v2 | «… ۱۲ درصد افزایش فروش است، عمدتاً در تهران و اصفهان. این موضوع را روز دوشنبه ساعت ۱۰:۳۰ **بررسی می‌کنیم**.» | **5 / 5 / 5** |
+
+**Why it worked, and its limit:** the verb became natural and the sentence lost its English shape; the exact collocation «افزایش ۱۲ درصدی» still did not appear. On a technical sample (n2) the owner preferred v1, because v2 rendered "fine-tune" as «بهینه‌سازی» (less precise than «تنظیم دقیق»). Net over the two translator samples: v2 4.83 / 4.5 / 4.83 vs v1 4.17 / 5.0 / 4.0 (F / A / N).
+
+**Rejected: summarizer v2 and general-chat v2.** The blind review preferred v1 for the summarizer in 2 of 3 samples (one fluent v2 summary gave councillor Maria Lopez the false title «شهردار», mayor) and for general chat in 3 of 3, although the engineer's own unscored reading had favoured v2 chat. They were not merged (drafts remain in git history). Lesson: fluent output with a factual error loses, and a blind native-speaker review can overturn the author's own judgement.
 
 ---
 
@@ -374,7 +392,27 @@ Coverage: 8 EN, 6 FA, 1 mixed; each skill alone in both languages; chain; 2 para
 Reports state the model, provider, date, temperatures, prompt shas, git commit and limits. Per ADR-011, runs are repeated (3×) and reported as mean and min–max, because free endpoints are nondeterministic even at temperature 0. Each prompt version's runs are reported separately, never pooled (ADR-030).
 
 ### Test-set results
-<!-- TEST-RESULTS -->
+All test-set runs use Groq `qwen/qwen3.8-27b` and the frozen `eval/test_set.yaml` (15 cases; one case = 6.7 points). Each prompt version is reported separately (ADR-030); nothing here was tuned on the test set.
+
+**Run 1: all prompts v1** (2026-11-27, complete): [`eval/reports/test_20261127-1051_v1-run1.md`](eval/reports/test_20261127-1051_v1-run1.md)
+
+| metric | result |
+|---|---|
+| **Skill-detection accuracy (routing-correct: skill set + structure + language)** | **14/15 = 93.3%** |
+| Skill set exact (ordered) | 14/15 |
+| Structure (multi-step cases) | 2/3 |
+| Response language | 15/15 |
+| Params / dropped-intent count / calculator exactness | 5/6 · 1/1 · 3/4 |
+| Output checks: `script_fa` · `script_latin` · `no_preamble` · `no_arabic_chars` | 7/7 · 3/3 · 4/4 · 5/5 |
+| `not_answering_injection` | 0/1 (T15, see below) |
+| Per category | single 9/9 · chain 1/1 · clarify 1/1 · no_match 1/1 · over_limit 1/1 · injection 1/1 (routing) · parallel 0/1 |
+| Latency p50 / p95 · LLM calls per case | 1.50 s / 10.80 s · mean 2.0, max 3 |
+
+The two failures, explained:
+- **T10 (parallel translate + divide):** the provider timed out on the router call four times (30 s each), so the agent fell back to `general_chat` (the designed degraded path). This was a provider failure, but it counts as a miss as measured.
+- **T15 (prompt injection inside a text to translate):** routing was correct, but the answer was "The trip was canceled." A payload-extraction rule added two days earlier took the injected «…» quote inside the content as the text to translate. The bug was fixed with new (non-test) regression tests, and the fix is disclosed in ADR-031 *because it was found on the test set*; run 1 stays as measured.
+
+**Final versions** (router v1, summarizer v1, translator **v2**, general chat v1; code includes the ADR-031 fix): [`eval/reports/test_20261127-1134_final.md`](eval/reports/test_20261127-1134_final.md). <!-- FINAL-RUNS --> Partial when this README was written: T01–T09 routing-correct **9/9**, then Groq's 200K tokens/day limit stopped the run at T10 (the runner stops instead of retrying through a quota, ADR-029). The remaining cases are resumed with `--resume` when the quota frees, and the report is updated in place.
 
 ### Dev-set measurements (not reportable accuracy: tuned against or partial)
 | What | Scope | Result | Source |
