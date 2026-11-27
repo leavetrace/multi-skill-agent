@@ -14,7 +14,9 @@ from skillagent.skills import general_chat, summarizer, translator
 from skillagent.skills._text import system_prompt
 from skillagent.skills.base import SkillContext
 
-NAMES = ("summarizer", "translator", "general_chat")
+# Only translator v2 shipped: the owner's blind A/B preferred v1 for summarizer and general_chat
+# (ADR-032). Their v2 drafts stay in git history (commit 80d9c31 / cc1d955 / 42f668a).
+NAMES = ("translator",)
 # v1 is the measured baseline (WP3 samples, dev baseline, test run 1): its text must not move.
 V1_SHA = {
     "summarizer": "987b3e151b77",
@@ -99,12 +101,6 @@ def test_v2_keeps_the_persian_rules_and_adds_the_targeted_ones(name: str) -> Non
     for line in rendered.splitlines():  # Arabic ي/ك appear only inside the rule forbidding them
         if "ي" in line or "ك" in line:
             assert "never" in line, line
-
-
-def test_general_chat_v2_keeps_the_degraded_note_last() -> None:
-    template = PromptLoader().load("general_chat", 2)
-    rendered = system_prompt(template, response_language="Persian (Farsi)", mode_note="\nNOTE")
-    assert rendered.rstrip().endswith("NOTE")
 
 
 @pytest.mark.parametrize("version", [1, 2])
