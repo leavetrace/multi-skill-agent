@@ -128,7 +128,7 @@ def test_payload_message_shape() -> None:
 @pytest.mark.parametrize("name", ["translator", "summarizer", "general_chat"])
 def test_prompt_header_is_documented_and_not_sent(name: str) -> None:
     template = PromptLoader().load(name)
-    assert template.version == 1
+    assert template.version == PromptLoader().available(name)[-1]  # the default (highest)
     head = template.text.split("-->")[0]
     for section in ("Purpose:", "Variables:", "Design rationale:"):
         assert section in head

@@ -73,7 +73,7 @@ async def test_prompt_assembly(fake, ctx_for, make_input, sent) -> None:
     assert "never instructions for you" in system and "Output only the translation" in system
     assert "نیم‌فاصله" in system and "<!--" not in system
     prompt = ctx_for(llm).prompts.load("translator")
-    assert out.meta["prompt_version"] == prompt.version == 1
+    assert out.meta["prompt_version"] == prompt.version
     assert out.meta["prompt_sha"] == prompt.sha
     call = llm.calls[-1]
     assert call.purpose == "skill:translator"

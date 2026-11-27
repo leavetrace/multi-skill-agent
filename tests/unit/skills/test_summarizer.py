@@ -49,7 +49,7 @@ async def test_prompt_assembly_and_meta(fake, ctx_for, make_input, sent) -> None
         "format": "paragraph",
         "output_language": "en",
         "payload_method": "after_colon",
-        "prompt_version": 1,
+        "prompt_version": ctx_for(llm).prompts.load("summarizer").version,
         "llm_calls": 1,
         "truncated_input": False,
         "truncated_output": False,
