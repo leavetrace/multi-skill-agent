@@ -18,7 +18,8 @@ async def test_message_shape(fake, ctx_for, make_input, sent) -> None:
     assert "cannot browse the web" in system and "no memory" in system
     assert "<!--" not in system and "could not be classified" not in system
     assert out.status == "ok" and out.output == "Hi! I'm well."
-    assert out.meta["prompt_version"] == 1 and not out.meta["degraded"]
+    assert out.meta["prompt_version"] == ctx_for(llm).prompts.load("general_chat").version
+    assert not out.meta["degraded"]
     call = llm.calls[-1]
     assert call.purpose == "skill:general_chat"
     assert call.kwargs["temperature"] == general_chat.BUDGET.temperature
