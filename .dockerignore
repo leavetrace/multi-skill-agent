@@ -1,0 +1,23 @@
+# Secrets: the key is passed at run time with --env-file, never baked into the image.
+.env
+.env.*
+!.env.example
+
+# Version control, agent worktrees, local environments and caches
+.git
+.worktrees
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Not needed at run time
+eval/reports/raw
+tests
+spikes
+docs
+agent_prompts
+AIEngineerTask.pdf
