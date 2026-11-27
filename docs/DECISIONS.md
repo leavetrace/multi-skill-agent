@@ -187,3 +187,9 @@ GitHub repo `multi-skill-agent`; Python package `skillagent`; CLI `python -m ski
 - **Groq free tier also limits tokens per day: 200 000 (TPD)**, measured from the 429 body. One eval case costs ~3 000 tokens (router ~2 300), so a day covers ~65 cases, shared with every other Groq session on the account. Consequences: live work is budgeted **per day**; the final test-set run (15 × 3 ≈ 135K tokens) gets a day to itself; dev iteration uses `--resume` and fewer runs.
 - Answers: (1) Amendment accepted (this ADR). (2) **Yes**, the gateway will redact `org_…` itself (architect follow-up); the eval redaction stays as a second line. (3) Replace the partial report with the merged one when D11–D40 run; git keeps the history.
 - Proposals carried to WP7: after a router `LLMRateLimitError`, skip the fallback skill call; degraded fallback wording should suggest retrying later.
+### ADR-030 — Deadline-day plan (2026-11-27)
+**Status:** Accepted (owner: "today is the deadline")
+- Groq's 200K tokens/day is the binding constraint. Priorities follow the mandatory requirements: test-set accuracy (R16), one measured prompt-improvement example (R15), README (R13–R20), GitHub repo (R21).
+- **Test set:** one insurance run at the current prompts (v1) now; after the owner's blind A/B review of WP7a's v2, the remaining runs at the final versions. The README reports each prompt version's runs separately, never pooled.
+- **Dev baseline D11–D40 is dropped** for quota; the README labels the partial dev numbers as such.
+- WP7a (targeted v2 text-skill prompts, ≤ 40 calls) and WP7b (README, Dockerfile, release checks; 0 calls) run in parallel. **README.md is delegated to WP7b** for this WP; the architect fills the measured placeholders.
