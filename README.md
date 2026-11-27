@@ -560,7 +560,7 @@ Where the brief is ambiguous, these choices were made ([`docs/REQUIREMENTS.md`](
 
 ## 13. Development process and AI usage
 
-**AI-usage disclosure.** This repository was built with **Claude Code agents (Anthropic Claude)**, coordinated by a human owner and a "Chief Architect" Claude session. All instruction artifacts given to the agents are committed:
+**AI-usage disclosure.** The code in this repository was written by **Claude Code agents (Anthropic Claude)**. The engineering direction came from the human owner (the candidate): the owner analysed the brief, decided what mattered and how it should be solved, and briefed and steered a "Chief Architect" Claude session, which turned that direction into the written design and task prompts for the implementing agents. All instruction artifacts given to the agents are committed:
 
 | Artifact | Purpose |
 |---|---|
@@ -569,7 +569,17 @@ Where the brief is ambiguous, these choices were made ([`docs/REQUIREMENTS.md`](
 | [`docs/`](docs/) | Architecture, frozen contracts, the decision log (ADR-001…030), requirement traceability, task board |
 | [`docs/handoffs/`](docs/handoffs/) | Each agent's handoff report: commands actually run, measured results, deviations, questions |
 
-**Roles.** The **owner** made the product decisions (provider approval, scope, deadline plan), did the native Persian reviews, held the API keys and merged every branch. The **architect session** wrote the design, contracts and task prompts, reviewed each work package **by reproduction** (re-running the tests in the agent's worktree, trial-merging branches, live spot checks) and recorded the outcome as an ADR (ADR-021…029). **WP agents** implemented one package each.
+**Roles.**
+
+**The owner (human, candidate) — problem framing, technical direction and review:**
+- **Framing and priorities.** Before any design was written, the owner worked out, beyond the task PDF, what matters in this assignment and what doesn't, and how each part should be done. That briefing is the basis of the requirement classes in [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) (mandatory vs. objective vs. out of scope) and of the "ship exactly 4 skills, but make the mechanisms generic" stance (ADR-013).
+- **Scalability and explosion control.** The owner set the requirement that the design must hold at 10–20+ skills without execution or context explosion, and directed how to prevent it. This drives [ARCHITECTURE §1 and §7](docs/ARCHITECTURE.md) (what actually breaks as skills grow, nine code-enforced limits) and the synthetic-skill scalability tests.
+- **Multilinguality.** The owner defined how English/Persian handling should work: the instruction language decides the reply language, Persian normalization and output style, Finglish, and native-speaker quality control. This became [ARCHITECTURE §8](docs/ARCHITECTURE.md) and README §9.
+- **Technical review and decisions.** The owner reviewed the architecture before it was frozen and made the consequential calls: provider and model (ADR-026, after the measured bake-off), the deadline-day plan (ADR-030), and which v2 prompts ship (ADR-032).
+- **Native-speaker evaluation.** The owner wrote the Persian quality scores: the blind WP0 review, the 13 WP3 samples, the blind v1/v2 A/B, and the test-set Persian sign-off. These scores, not the agents' self-assessment, decided the prompt changes (§7.3).
+- **Operation.** The owner launched every agent session, held the API keys, and merged every branch after review.
+
+**The architect session (Claude)** turned the owner's direction into the written design ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)), the frozen contracts and the task prompts in [`agent_prompts/`](agent_prompts/). It reviewed each work package **by reproduction** (re-running the tests in the agent's worktree, trial-merging branches, live spot checks), recorded each outcome as an ADR (ADR-021…032), and made small follow-up fixes. **WP agents (Claude)** implemented one package each.
 
 **Workflow.**
 - **One git worktree and branch per agent** (`.worktrees/<wp>`), so concurrent sessions never share a checkout (ADR-016).
